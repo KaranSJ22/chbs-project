@@ -1,0 +1,221 @@
+:root {
+  --primary: #349ff1;
+  --bg-slate: #f8fafc;
+  --border-color: #648ad6;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --white: #ffffff;
+}
+
+.chbs-calendar-widget {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  background: transparent;
+  width: fit-content;
+  margin: 20px; 
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.calendar-container {
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  width: 350px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.calendar-header {
+  background: var(--primary);
+  color: var(--white);
+  padding: 1.25rem;
+  text-align: center;
+  position: relative;
+}
+
+.month-year {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  position: absolute;
+  width: 100%;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  padding: 0 1rem;
+}
+
+.nav-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--white);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 0.75rem 1rem;
+  background: var(--bg-slate);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.weekday {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  padding: 1rem;
+}
+
+.day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-main);
+  border-radius: 50%;
+  position: relative;
+  transition: background 0.2s;
+}
+
+.day:hover:not(.other-month) {
+  background: var(--bg-slate);
+}
+
+/* Today State */
+.day.today {
+  color: var(--primary);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* Selected State */
+.day.selected {
+  background: var(--primary) !important;
+  color: var(--white) !important;
+}
+
+.day.other-month {
+  color: #cbd5e1;
+  cursor: default;
+}
+
+/* Holiday Circle Marker */
+.day.has-events {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.day.has-events::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  background: rgba(52, 159, 241, 0.08);
+  pointer-events: none;
+}
+
+/* Ensure circle color changes when selected */
+.day.selected.has-events::before {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: transparent;
+}
+
+/* Right Section: Event Panel */
+.event-panel {
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 380px;
+  height: fit-content;
+  min-height: 400px;
+}
+
+.event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.event-date {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.event-item {
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  background: var(--bg-slate);
+  border-left: 4px solid var(--primary);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.event-text {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.no-events {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 4rem 1rem;
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 800px) {
+  .chbs-calendar-widget {
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin: 10px;
+  }
+  .calendar-container, .event-panel {
+    width: 100%;
+    max-width: 400px;
+  }
+}
