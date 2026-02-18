@@ -86,7 +86,7 @@ useEffect(() => {
               onClick={() => setActiveView("DISABLE_HALL")}
             />
             <MenuBtn
-              label="ADD MEET TYPE"
+              label="Add Meet Type"
               active={activeView==="ADD_MEET_TYPE"}
               onClick={()=>setActiveView("ADD_MEET_TYPE")}
             />

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { addMeetType } from '../../services/meetingTypeService';
 
 const AddMeetTypeForm = () => {
-    const [form, setForm] = useState({ meetType:'', meetDescription:'' });
+    const [form, setForm] = useState({ meetName:'', meetDescription:'' });
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState(null);
 
@@ -14,11 +14,10 @@ const AddMeetTypeForm = () => {
 
         try {
             const result = await addMeetType(form);
-            console.log(result);
-            setStatus({ type: 'success', text: result.message || 'Hall created successfully!' });
+            setStatus({ type: 'success', text: result.Status || 'Meet Type Added' });
             setForm({ name: '', meetDescription: '' });
         } catch (err) {
-            setStatus({ type: 'error', text: err.message || 'Failed to create hall.' });
+            setStatus({ type: 'error', text: err.message || 'Failed to add meet type.' });
         } finally {
             setLoading(false);
         }
@@ -44,9 +43,9 @@ const AddMeetTypeForm = () => {
                     <input
                         type="text" required
                         className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                        placeholder="Conference Hall"
-                        value={form.meetType}
-                        onChange={e => setForm({ ...form, meetType: e.target.value })}
+                        placeholder="Meeting Type"
+                        value={form.meetName}
+                        onChange={e => setForm({ ...form, meetName: e.target.value })}
                     />
                 </div>
                 <div>
@@ -54,7 +53,7 @@ const AddMeetTypeForm = () => {
                     <input
                         type="text" required
                         className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                        placeholder="e.g. Main Block, 3rd Floor"
+                        placeholder="Daily Meeting"
                         value={form.meetDescription}
                         onChange={e => setForm({ ...form, meetDescription: e.target.value })}
                     />
