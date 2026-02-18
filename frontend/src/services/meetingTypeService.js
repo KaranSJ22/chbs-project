@@ -6,3 +6,8 @@ export const fetchAllMeetingTypes = async () => {
     return await response.json();
 };
 
+export const addMeetType=async()=>{
+    const response=await fetch(ENDPOINTS.ADMIN_ADD_MEET);
+    if(!response.ok) throw new Error("Failed to add Meet type");
+    return await response.json();
+};
