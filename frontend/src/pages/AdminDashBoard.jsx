@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import HolidayCalendar from '../components/domain/HolidayCalendar/HolidayCalendar';
 import AddHallForm from '../components/forms/AddHallForm';
 import AddUserForm from '../components/forms/AddUserForm';
+import AddMeetTypeForm from '../components/forms/AddMeetTypeForm';
 import DisableHallForm from '../components/forms/DisableHallForm';
 import { fetchAllHalls } from '../services/hallService';
 import RecordsTable from '../components/domain/admin/RecordsTable';
@@ -84,6 +85,11 @@ useEffect(() => {
               active={activeView === "DISABLE_HALL"}
               onClick={() => setActiveView("DISABLE_HALL")}
             />
+            <MenuBtn
+              label="Add Meet Type"
+              active={activeView==="ADD_MEET_TYPE"}
+              onClick={()=>setActiveView("ADD_MEET_TYPE")}
+            />
             <div className="my-2 border-t border-gray-100"></div>
             <MenuBtn
               label="Get All Halls"
@@ -115,6 +121,7 @@ useEffect(() => {
               {activeView === "ADD_HALL" && <AddHallForm />}
               {activeView === "ADD_USER" && <AddUserForm />}
               {activeView === "DISABLE_HALL" && <DisableHallForm />}
+              {activeView === "ADD_MEET_TYPE" && <AddMeetTypeForm/>}
               {(activeView === "VIEW_HALLS" || activeView === "PENDING") && (
                 <p className="text-gray-400 italic">
                   Select an entry from the records table to perform actions.
