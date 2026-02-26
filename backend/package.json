@@ -5,13 +5,13 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
-    "test": "jest"
+    "dev": "nodemon src/app.js"
   },
   "author": "Karan SJ",
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
@@ -21,10 +21,6 @@
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.1",
     "mysql2": "^3.16.2",
-    "sequelize": "^6.37.7",
-    "uuid": "^8.3.2"
-  },
-  "devDependencies": {
-    "jest": "^30.2.0"
+    "sequelize": "^6.37.7"
   }
 }

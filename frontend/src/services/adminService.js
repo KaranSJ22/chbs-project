@@ -1,46 +1,64 @@
-import {ENDPOINTS } from '../config/api';
+import { ENDPOINTS } from '../config/api';
 
+const admin = ENDPOINTS.ADMIN;
+
+const fetchJSON = async (url, options = {}) => {
+    const response = await fetch(url, { credentials: 'include', ...options });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || data.message || 'Request failed');
+    return data;
+};
 
 export const adminService = {
-    // 1. Fetch Pending Approvals
-    getPendingBookings: async () => {
-        const response = await fetch(`${ENDPOINTS.ADMIN}/pending`);
-        if (!response.ok) throw new Error('Failed to fetch bookings');
-        return await response.json();
-    },
+    //  Pending Approvals currently all, but It needs to only fetch Director hall
+    getPendingBookings: () =>
+        fetchJSON(`${admin}/pending`),
 
-    // 2. Approve or Reject Needs to changed only reject
-    decideBooking: async (bookingId, status) => {
-        const response = await fetch(`${ENDPOINTS.ADMIN}/decide`, {
+    //  Approve or Reject
+    decideBooking: (bookingId, status) =>
+        fetchJSON(`${admin}/decide`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ bookingId, status })
-        });
-        if (!response.ok) throw new Error('Action failed');
-        return await response.json();
-    },
+        }),
 
-    // 3. Add New Hall
-    addHall: async (hallData) => {
-        const response = await fetch(`${ENDPOINTS.ADMIN}/hall`, {
+    // Add Hall
+    addHall: (hallData) =>
+        fetchJSON(`${admin}/hall`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(hallData)
-        });
-        if (!response.ok) throw new Error('Failed to create hall');
-        return await response.json();
-    },
+        }),
 
-    // 4. Add New User
-    addUser: async (userData) => {
-        const response = await fetch(`${ENDPOINTS.ADMIN}/user`, {
+    // Edit Hall
+    editHall: (hallData) =>
+        fetchJSON(`${admin}/hall`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(hallData)
+        }),
+
+    // Add User
+    addUser: (userData) =>
+        fetchJSON(`${admin}/user`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(userData)
-        });
-        if (!response.ok) throw new Error('Failed to create user');
-        return await response.json();
-    }
+        }),
 
-    
+    // Add Meeting Type
+    addMeetingType: (typeData) =>
+        fetchJSON(`${ENDPOINTS.MEETING_TYPES}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(typeData) // { name, desc }
+        }),
+
+    // Edit Meeting Type
+    editMeetingType: (typeData) =>
+        fetchJSON(`${admin}/meet-type`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(typeData)
+        }),
 };

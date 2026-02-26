@@ -1,79 +1,79 @@
-const db = require("../models");
-const Hall = db.halls;
 const SP = require('../../property/procedures');
 const { callSP } = require('../queries/spWrapper');
 
+const getRows = (result) => (result && Array.isArray(result[0]) ? result[0] : result || []);
 
+// All Halls even disabled one also
 exports.getAllHalls = async (req, res) => {
   try {
-    const halls = await Hall.findAll();
-    const formattedHalls = halls.map(hall => {
-      const h = hall.get({ plain: true }); 
-      return {
-        ...h,
-        
-        isAvailable: h.isAvailable && h.isAvailable.data 
-          ? h.isAvailable.data[0] 
-          : (h.isAvailable == 1 ? 1 : 0)
-      };
-    });
-
-    res.status(200).json(formattedHalls);
+    const result = await callSP(SP.GET_ALL_HALLS);
+    res.status(200).json(getRows(result));
   } catch (error) {
-    console.error("Error fetching halls:", error);
-    res.status(500).send({
-      message: "Error retrieving halls.",
-      error: error.message
-    });
+    console.error('Get All Halls Error:', error);
+    res.status(500).json({ error: 'Failed to fetch halls.' });
   }
 };
 
+// Available Halls for a given date -- used in Booking Form drop down
+exports.getAvailableHalls = async (req, res) => {
+  try {
+    const { date } = req.query;
+    // console.log(date);
+    if (!date) {
+      return res.status(400).json({ error: 'date query param is required (YYYY-MM-DD).' });
+    }
+
+    const result = await callSP(SP.GET_ALL_HALLSB, { p_Date: date });
+    // console.log(getRows(result));
+    res.status(200).json(getRows(result));
+  } catch (error) {
+    console.error('Get Available Halls Error:', error);
+    res.status(500).json({ error: 'Failed to fetch available halls.' });
+  }
+};
 
 exports.checkAvailability = async (req, res) => {
   try {
-    const { hallId, date, slot } = req.query;
-    
+    const { hallId, date, startSlot, endSlot } = req.query;
+
+    if (!hallId || !date || !startSlot || !endSlot) {
+      return res.status(400).json({ error: 'hallId, date, startSlot, and endSlot are required.' });
+    }
+
     const result = await callSP(SP.CHECK_AVAILABILITY, {
       p_HallID: hallId,
       p_Date: date,
-      p_Slot: slot
+      p_Start: startSlot,
+      p_End: endSlot
     });
-    
-    res.json(result);
+
+    const rows = getRows(result);
+    const conflictCount = rows[0]?.ConflictCount ?? 0;
+    res.status(200).json({ available: conflictCount === 0, conflictCount });
   } catch (error) {
-    console.error("Error checking availability:", error);
-    res.status(500).json({ 
-      message: "Error checking availability",
-      error: error.message 
-    });
+    console.error('Check Availability Error:', error);
+    res.status(500).json({ error: 'Failed to check availability.' });
   }
 };
 
-
+// Disable Hall
 exports.updateHallStatus = async (req, res) => {
-    try {
-        const { hallId, action, fromDate, toDate } = req.body;
+  try {
+    const { hallId, fromDate, toDate } = req.body;
 
-        if (action === 'DISABLE' && (!fromDate || !toDate)) {
-            return res.status(400).json({ 
-                success: false,
-                message: "Maintenance start and end dates are required." 
-            });
-        }
-
-        await callSP(SP.ADMIN_MANAGE_HALL, {
-            p_HallID: hallId,
-            p_Action: action,
-            p_FDate: action === 'DISABLE' ? fromDate : null,
-            p_TDate: action === 'DISABLE' ? toDate : null
-        });
-
-        res.status(200).json({ 
-            success: true, 
-            message: `Hall ${action === 'ENABLE' ? 'activated' : 'placed in maintenance'}.` 
-        });
-    } catch (error) {
-        console.error("Management Controller Error:", error); 
-        res.status(500).json({ success: false, message: "Internal Server Error" });
+    if (!hallId || !fromDate || !toDate) {
+      return res.status(400).json({ error: 'hallId, fromDate, and toDate are required.' });
     }
+
+    await callSP(SP.ADMIN_DISABLE_HALL, {
+      p_HID: hallId,
+      p_From: fromDate,
+      p_To: toDate
+    });
+
+    res.status(200).json({ message: 'Hall disabled. It will auto-enable after the maintenance window.' });
+  } catch (error) {
+    console.error('Update Hall Status Error:', error);
+    res.status(500).json({ error: 'Failed to update hall status.' });
+  }
 };

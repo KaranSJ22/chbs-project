@@ -1,116 +1,141 @@
 import React, { useState, useEffect } from 'react';
 import { fetchAllHalls, updateHallStatus } from '../../services/hallService';
 
-const DisableHallForm = () => {
+const isHallActive = (hall) => {
+    const v = hall.ISAVAILABLE;
+    return v === 1 || v === true || (v?.data && v.data[0] === 1);
+};
+
+const DisableHallForm = ({ onSuccess }) => {
     const [halls, setHalls] = useState([]);
     const [selectedHall, setSelectedHall] = useState('');
     const [dates, setDates] = useState({ from: '', to: '' });
     const [loading, setLoading] = useState(false);
+    const [status, setStatus] = useState(null);
 
-    // Load actual halls on mount
-    useEffect(() => {
-        loadHalls();
-    }, []);
+    useEffect(() => { loadHalls(); }, []);
 
     const loadHalls = async () => {
         try {
             const data = await fetchAllHalls();
             setHalls(data);
         } catch (err) {
-            console.error(err);
+            console.error('Failed to load halls:', err);
         }
     };
 
-    const currentHall = halls.find(h => h.HALLID === selectedHall);
+    const currentHall = halls.find(h => String(h.HALLID) === String(selectedHall));
+    const active = currentHall ? isHallActive(currentHall) : null;
 
-    const handleAction = async (action) => {
+    const handleDisable = async () => {
+        if (!dates.from || !dates.to) {
+            setStatus({ type: 'error', text: 'Please select both From and To dates.' });
+            return;
+        }
         setLoading(true);
+        setStatus(null);
         try {
-            const payload = {
-                hallId: selectedHall,
-                action: action, // 'DISABLE' or 'ENABLE'
-                fromDate: action === 'DISABLE' ? dates.from : null,
-                toDate: action === 'DISABLE' ? dates.to : null
-            };
-
-            await updateHallStatus(payload);
-            alert(`Hall successfully ${action === 'ENABLE' ? 'Enabled' : 'Disabled'}`);
+            await updateHallStatus({ hallId: selectedHall, fromDate: dates.from, toDate: dates.to });
+            setStatus({ type: 'success', text: 'Hall disabled for maintenance. It will auto-enable after the maintenance window.' });
+            setDates({ from: '', to: '' });
+            setSelectedHall('');
             loadHalls();
+            if (onSuccess) onSuccess();
         } catch (err) {
-            alert(err.message);
+            setStatus({ type: 'error', text: err.message || 'Failed to disable hall.' });
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="max-w-md bg-white p-6 rounded shadow border border-gray-100">
-            <h2 className="text-xl font-semibold mb-6 text-gray-800">Manage Hall Availability</h2>
-            
+        <div className="w-full">
+            <div className="mb-8">
+                <h2 className="text-2xl font-bold text-[#003366] flex items-center gap-3">
+                    <span className="w-2 h-8 bg-red-500 rounded-full"></span>
+                    Manage Hall Availability
+                </h2>
+                <p className="text-sm text-gray-500 mt-1 ml-5 italic">
+                    Disable halls for maintenance. Re-enabling is automatic after the maintenance window.
+                </p>
+            </div>
+
+            {status && (
+                <div className={`mb-6 p-4 rounded-xl border flex items-center gap-3 ${status.type === 'success'
+                        ? 'bg-green-50 border-green-100 text-green-800'
+                        : 'bg-red-50 border-red-100 text-red-800'
+                    }`}>
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${status.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    <span className="text-sm font-semibold">{status.text}</span>
+                </div>
+            )}
+
             <div className="space-y-6">
-                {/* 1. Selection */}
-                <div>
-                    <label className="block text-gray-700 mb-1 font-medium">Select Hall</label>
-                    <select 
-                        className="w-full border border-gray-300 rounded p-2 outline-none focus:ring-2 focus:ring-blue-500"
+                {/* Hall Selector */}
+                <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-[#003366] ml-1">Select Hall</label>
+                    <select
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-[#007BFF] focus:ring-4 focus:ring-blue-50 outline-none transition-all"
                         value={selectedHall}
-                        onChange={(e) => setSelectedHall(e.target.value)}
+                        onChange={e => { setSelectedHall(e.target.value); setStatus(null); }}
                     >
                         <option value="">-- Choose a Hall --</option>
                         {halls.map(h => (
                             <option key={h.HALLID} value={h.HALLID}>
-                                {h.HALLNAME} ({h.isAvailable ? 'Active' : 'Maintenance'})
+                                {h.HALLNAME} ({isHallActive(h) ? 'Active' : 'Under Maintenance'})
                             </option>
                         ))}
                     </select>
                 </div>
 
-                {selectedHall && (
-                    <div className="animate-in fade-in duration-300 space-y-4">
-                        {/* 2. Logic: Toggle Only for Enabling */}
-                        {!currentHall?.isAvailable ? (
-                            <div className="bg-blue-50 p-4 rounded-lg flex items-center justify-between border border-blue-100">
-                                <div>
-                                    <p className="text-sm font-bold text-blue-900">Hall is currently under Maintenance</p>
-                                    <p className="text-xs text-blue-700">Click toggle to enable early</p>
-                                </div>
-                                <button 
-                                    onClick={() => handleAction('ENABLE')}
-                                    className="w-12 h-6 bg-blue-600 rounded-full relative transition-all"
-                                >
-                                    <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm" />
-                                </button>
+                {/* Hall-specific action */}
+                {selectedHall && currentHall && (
+                    <div>
+                        {!active ? (
+                            /* Hall is already under maintenance */
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm">
+                                <p className="font-bold text-amber-800">⏳ Hall is currently under maintenance</p>
+                                {currentHall.DISABLED_FROM && (
+                                    <p className="text-amber-700 text-xs mt-1">
+                                        Period: {new Date(currentHall.DISABLED_FROM).toLocaleDateString('en-GB')} → {new Date(currentHall.DISABLED_TO).toLocaleDateString('en-GB')}
+                                    </p>
+                                )}
+                                <p className="text-amber-600 text-xs mt-2">
+                                    The system will automatically re-enable this hall after the maintenance window ends.
+                                </p>
                             </div>
                         ) : (
-                            /* 3. Logic: Form Only for Disabling */
-                            <div className="space-y-4 border-t pt-4">
-                                <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Schedule Maintenance</p>
+                            /* Hall is active — show disable form */
+                            <div className="space-y-5 border-t border-gray-100 pt-5">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Schedule Maintenance Window</p>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs text-gray-600 mb-1">From Date</label>
-                                        <input 
-                                            type="date" 
-                                            className="w-full border border-gray-300 rounded p-2 text-sm"
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-gray-500 ml-1">FROM DATE</label>
+                                        <input
+                                            type="date"
+                                            className="w-full border border-gray-200 bg-gray-50 rounded-xl p-3 text-sm focus:bg-white outline-none"
                                             value={dates.from}
-                                            onChange={e => setDates({...dates, from: e.target.value})}
+                                            min={new Date().toISOString().split('T')[0]}
+                                            onChange={e => setDates({ ...dates, from: e.target.value })}
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-xs text-gray-600 mb-1">To Date</label>
-                                        <input 
-                                            type="date" 
-                                            className="w-full border border-gray-300 rounded p-2 text-sm"
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-gray-500 ml-1">TO DATE</label>
+                                        <input
+                                            type="date"
+                                            className="w-full border border-gray-200 bg-gray-50 rounded-xl p-3 text-sm focus:bg-white outline-none"
                                             value={dates.to}
-                                            onChange={e => setDates({...dates, to: e.target.value})}
+                                            min={dates.from || new Date().toISOString().split('T')[0]}
+                                            onChange={e => setDates({ ...dates, to: e.target.value })}
                                         />
                                     </div>
                                 </div>
-                                <button 
+                                <button
                                     disabled={loading || !dates.from || !dates.to}
-                                    onClick={() => handleAction('DISABLE')}
-                                    className="w-full bg-red-600 text-white py-2 rounded font-semibold hover:bg-red-700 transition disabled:bg-gray-300"
+                                    onClick={handleDisable}
+                                    className="w-full bg-red-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-red-100 hover:bg-red-700 transition disabled:bg-gray-200 disabled:shadow-none"
                                 >
-                                    Disable for Maintenance
+                                    {loading ? 'Processing...' : 'DISABLE FOR MAINTENANCE'}
                                 </button>
                             </div>
                         )}
@@ -122,3 +147,5 @@ const DisableHallForm = () => {
 };
 
 export default DisableHallForm;
+
+//error bit arrives as buffer this needs to converted before using

@@ -1,10 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const bookingController = require('../controllers/bookingController');
+const authMiddleware = require('../middleware/authMiddleware');
 
-router.post('/', bookingController.createBooking);
-router.get('/dashboard/:empCode', bookingController.getUserDashboard);
-router.post('/cancel', bookingController.cancelBooking);
-router.put('/status', bookingController.updateStatus);
+// All booking routes require authentication (NORMAL, ADMIN, or PA)
+router.post('/', authMiddleware, bookingController.createBooking);
 
+router.get('/dashboard', authMiddleware, bookingController.getUserDashboard);
+router.get('/history', authMiddleware, bookingController.getBookingHistory);
+
+router.post('/cancel', authMiddleware, bookingController.cancelBooking);
 module.exports = router;
