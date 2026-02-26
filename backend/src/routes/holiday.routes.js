@@ -1,9 +1,8 @@
-const express=require('express');
+const express = require('express');
+const router = express.Router();
+const holidayController = require('../controllers/holidayController');
+const authMiddleware = require('../middleware/authMiddleware');
 
-const router=express.Router();
+router.get('/holidays', authMiddleware, holidayController.getAllHolidays);
 
-const holidayController=require('../controllers/holidayController');
-
-router.get('/holidays',holidayController.getAllHolidays);
-
-module.exports=router;
+module.exports = router;

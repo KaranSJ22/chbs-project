@@ -3,23 +3,51 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
+const cookieParser = require("cookie-parser");
+const rateLimit = require("express-rate-limit");
 const db = require("./models");
 const apiRoutes = require("./routes");
 const app = express();
-const PORT=process.env.SERVER_PORT;
+const PORT = process.env.SERVER_PORT;
+
+// --- LOGGING FIRST ---
+app.use(morgan("dev"));
+
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"],
+    }
+  },
+  crossOriginEmbedderPolicy: false
+}));
 
 app.use(cors({
-  origin: "http://localhost:5173",
-  methods: ["GET", "POST","PUT"],
+  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+  methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
 
-app.use(helmet());
+// Rate limiting for login endpoint
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,    
+  max: 10,                     
+  message: { error: "Too many login attempts. Try again after 15 minutes." },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use("/api/auth/login", loginLimiter);
+
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan("dev"));
 
-//sync with database
+// --- DATABASE SYNC ---
 db.sequelize.sync()
   .then(() => {
     console.log(" Database in sync.");
@@ -28,13 +56,12 @@ db.sequelize.sync()
     console.error("Database Connection Failed ", err.message);
   });
 
-//health check api route
+// --- ROUTES ---
 app.get("/", (req, res) => {
   res.json({ message: "HSFC booking System API is running" });
 });
 
 app.use("/api", apiRoutes);
-
 
 app.listen(PORT, () => {
   console.log(` Server running on port ${PORT}`);

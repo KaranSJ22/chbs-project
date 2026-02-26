@@ -13,7 +13,7 @@ module.exports = (sequelize, Sequelize) => {
         allowNull: false
       }
     }, {
-      tableName: 'CHBS_SLOTINFO', //  actual SQL table name in database
+      tableName: 'CHBS_SLOTINFO', 
       timestamps: false,           
       freezeTableName: true
     });

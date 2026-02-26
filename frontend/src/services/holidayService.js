@@ -1,13 +1,14 @@
 import { ENDPOINTS } from '../config/api';
 
 export const holidayService = {
- 
+
   getHolidaysByYear: async (year) => {
     try {
       const url = `${ENDPOINTS.CALENDAR}?year=${year}`;
       const response = await fetch(url, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
       });
 
       if (!response.ok) {

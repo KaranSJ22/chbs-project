@@ -1,111 +1,109 @@
-const { v4: uuidv4 } = require('uuid');
 const SP = require('../../property/procedures');
-const { callSP } = require('../queries/spWrapper'); 
+const { callSP } = require('../queries/spWrapper');
 
-// Helper function: Convert slot ID to time string (HH:MM format)
-const slotIdToTime = (slotId) => {
-    
-    const baseHour = 9;
-    const baseMinute = 0;
+const getRows = (result) => (result && Array.isArray(result[0]) ? result[0] : result || []);
 
-    const totalMinutes = baseMinute + ((slotId - 1) * 15);
-    const hours = baseHour + Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-};
-
-// 1. CREATE BOOKING (Transactions handled inside SP)
+// Create Booking
 exports.createBooking = async (req, res) => {
     try {
-        const { hallId, empCode, slotIds, date, title, meetType, linkRequired } = req.body;
+        // slotIds replaced with startSlot/endSlot (integer SLOTID values from CHBS_SLOTINFO)
+        const { hallId, startSlot, endSlot, date, onBehalfOf, title, meetType, linkRequired } = req.body;
+        const empCode = req.user.empCode;
 
-        if (!meetType) {
-            return res.status(400).json({ message: "Meeting type is required" });
+        if (!hallId || !startSlot || !endSlot || !date || !title || !meetType) {
+            return res.status(400).json({ error: 'hallId, startSlot, endSlot, date, title, and meetType are required.' });
         }
 
-        // Array [1, 2] to String "1,2"
-        const slotString = slotIds.join(',');
-
-        // Calculate start and end times from slot IDs O(1);
-        const startTime = slotIdToTime(slotIds[0]);
-        const endTime = slotIdToTime(slotIds[slotIds.length - 1]);
-
-        const newBookingId = uuidv4();
-
-        // call: (CHSP_BOOK_CONF)
-        await callSP(SP.CREATE_BOOKING, {
-            p_BookingID: newBookingId,
-            p_HallID: hallId,
-            p_EmpCode: empCode,
-            p_Slots: slotString,      // VARCHAR(50)
-            p_Date: date,             // DATETIME
-            p_MeetTitle: title,
-            p_MeetType: meetType,     // VARCHAR(50) - NEW
-            p_StartTime: startTime,   // VARCHAR(5) - NEW
-            p_EndTime: endTime,       // VARCHAR(5) - NEW
-            p_LinkReq: linkRequired || "NO"
+        const result = await callSP(SP.CREATE_BOOKING, {
+            p_HID: hallId,
+            p_By: empCode,
+            p_Behalf: onBehalfOf || null,
+            p_Ttl: title,
+            p_Typ: meetType,
+            p_Start: startSlot,
+            p_End: endSlot,
+            p_MeetDate: date,
+            p_Lnk: linkRequired || 'NO'
         });
 
+        const rows = getRows(result);
+        const spStatus = rows[0]?.Status;
+        
+        if (spStatus === 'HOLIDAY_RESTRICTION') {
+            return res.status(422).json({ error: 'Bookings cannot be made on public holidays.' });
+        }
+        if (spStatus === 'ERROR') {
+            return res.status(500).json({ error: 'Booking failed due to a database error.' });
+        }
+
+        const isPending = spStatus === 'PENDING';
         res.status(201).json({
-            message: "Booking Request Submitted",
-            bookingId: newBookingId
+            message: isPending
+                ? 'Booking submitted and pending admin approval.'
+                : 'Booking confirmed successfully.',
+            bookingId: rows[0]?.BookingID,
+            status: spStatus
         });
-
     } catch (error) {
-        // console.error("Booking Error:", error);
-        res.status(500).json({ message: "Database Error", error: error.message });
+        console.error('Create Booking Error:', error);
+        res.status(500).json({ error: error.message });
     }
 };
 
-
-// 3. GET USER DASHBOARD
+// User Live Dashboard
 exports.getUserDashboard = async (req, res) => {
     try {
-        const { empCode } = req.params;
-        const dashboardData = await callSP(SP.USER_DASHBOARD, {
-            p_EmpCode: empCode
-        });
-
-        res.json(dashboardData);
-        // console.log(dashboardData);
+        const empCode = req.user.empCode;
+        const result = await callSP(SP.USER_DASHBOARD, { p_EmpCode: empCode });
+        res.status(200).json(getRows(result));
     } catch (error) {
+        console.error('Dashboard Error:', error);
         res.status(500).json({ error: error.message });
     }
 };
 
-// 4. CANCEL BOOKING
+// 3 User History 
+exports.getBookingHistory = async (req, res) => {
+    try {
+        const empCode = req.user.empCode;
+        const result = await callSP(SP.USER_HISTORY, { p_EmpCode: empCode });
+        res.status(200).json(getRows(result));
+    } catch (error) {
+        console.error('History Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// Cancel
 exports.cancelBooking = async (req, res) => {
     try {
-        const { bookingId, empCode } = req.body;
+        const { bookingId } = req.body;
+        const empCode = req.user.empCode;
 
-        // Calling: sp_CancelBooking
-        await callSP(SP.CANCEL_BOOKING, {
-            p_BookingID: bookingId,
+        if (!bookingId) {
+            return res.status(400).json({ error: 'Booking ID is required.' });
+        }
+
+        const result = await callSP(SP.CANCEL_BOOKING, {
+            p_BKID: bookingId,
             p_EmpCode: empCode
         });
 
-        res.json({ message: "Booking Cancelled Successfully" });
+        const rows = getRows(result);
+        const spStatus = rows[0]?.Status;
 
+        if (spStatus === 'NOT_FOUND') return res.status(404).json({ error: 'Booking not found.' });
+        if (spStatus === 'UNAUTHORIZED') return res.status(403).json({ error: 'You can only cancel your own bookings.' });
+        if (spStatus === 'ALREADY_CLOSED') return res.status(409).json({ error: 'Booking is already cancelled or rejected.' });
+
+        res.status(200).json({ message: 'Booking cancelled successfully.' });
     } catch (error) {
+        console.error('Cancel Booking Error:', error);
         res.status(500).json({ error: error.message });
     }
 };
 
-// 5. ADMIN UPDATE STATUS (Approve/Reject)
-exports.updateStatus = async (req, res) => {
-    try {
-        const { bookingId, status } = req.body; // Status: 'REJECTED'
 
-        // Calling: sp_UpdateBookingStatus
-        await callSP(SP.UPDATE_STATUS, {
-            p_BookingID: bookingId,
-            p_NewStatus: status
-        });
-
-        res.json({ message: `Booking marked as ${status}` });
-
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
+// can redis be used to store holidays in cache for faster cheicking so that some load from db can be reduced
+// booking made must be show from todays date, not before it
+// redis lock for hallid to prevent race condition
