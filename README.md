@@ -1,7 +1,5 @@
 # Conference Hall Booking System (CHBS)
 
-A web-based application for managing conference hall bookings, approvals, and administration.
-
 ## Project Structure
 
 ```
