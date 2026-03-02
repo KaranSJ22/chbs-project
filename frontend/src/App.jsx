@@ -3,12 +3,12 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
+import NavBar from './components/common/NavBar';
 import AdminDashboard from './pages/AdminDashBoard';
-import EmployeeDashboard from './pages/EmployeeDashBoard';
+import EmployeeDashboard from './pages/EmployeeDashboard';
 import PAPage from './pages/PAPage';
 import BookingForm from './components/forms/BookingForm';
-import NavBar from './components/common/NavBar';
-
+import TimelinePage from './pages/TimeLine';
 function App() {
   return (
     <AuthProvider>
@@ -42,7 +42,9 @@ function App() {
               </div>
             } />
           </Route>
-
+          <Route element={<ProtectedRoute allowedRoles={['NORMAL', 'PA', 'ADMIN']} />}>
+            <Route path="/timeline" element={<TimelinePage />} />
+          </Route>
           {/* Default redirect */}
           <Route path="*" element={<Navigate to="/login" replace />} />
 

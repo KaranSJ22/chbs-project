@@ -24,6 +24,7 @@ module.exports = {
     // DASHBOARDS
     USER_DASHBOARD: 'CHSP_BK_DSH_LIVE', // current bookings for user
     USER_HISTORY: 'CHSP_BK_DSH_HIST', //  bookings history for user report generation
+    TIMELINE_BY_DATE: 'CHSP_BKDT',    // all CONFIRMED bookings for a given date (timeline view)
 
     //LOOKUPS / DROPDOWNS
     GET_ALL_HALLS: 'CHSP_HAL_ALL',    // All halls (admin management view)

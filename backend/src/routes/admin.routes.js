@@ -10,7 +10,7 @@ router.get('/pending', authMiddleware, requireRole('ADMIN'), adminController.get
 router.post('/decide', authMiddleware, requireRole('ADMIN'), adminController.decideBooking);
 router.post('/hall', authMiddleware, requireRole('ADMIN'), adminController.addHall);
 router.put('/hall', authMiddleware, requireRole('ADMIN'), adminController.editHall);
-router.post('/user', authMiddleware, requireRole('ADMIN'), adminController.addUser);
+// router.post('/user', authMiddleware, requireRole('ADMIN'), adminController.addUser);
 router.post('/meet-type', authMiddleware, requireRole('ADMIN'), meetingTypeController.addMeetingType);
 router.put('/meet-type', authMiddleware, requireRole('ADMIN'), adminController.editMeetingType);
 

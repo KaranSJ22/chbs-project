@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchDashboardData, handleBookingAction } from './employeeDashboard';
+import { fetchDashboardData, handleBookingAction } from './employee';
 import { useAuth } from '../context/AuthContext';
 import HolidayCalendar from '../components/domain/HolidayCalendar/HolidayCalendar';
 import NavBar from '../components/common/NavBar';

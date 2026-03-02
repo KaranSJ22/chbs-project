@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 const NavBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, isAdmin } = useAuth();
+  const { logout, isAdmin, isNormal } = useAuth();
 
   const handleLogout = async () => {
     await logout();
@@ -20,7 +20,7 @@ const NavBar = () => {
 
       <div className="flex items-center gap-6 font-medium text-sm">
         {/* Dashboard Link (Role-based) */}
-        {isAdmin ? (
+        {/* {isAdmin ? (
           <Link
             to="/admin"
             className={`hover:text-[#FF6600] transition-colors ${location.pathname === '/admin' ? 'text-[#FF6600]' : ''}`}
@@ -34,8 +34,10 @@ const NavBar = () => {
           >
             Dashboard
           </Link>
-        )}
+        )} */}
 
+        {isAdmin && <Link to="admin">Admin Dashboard</Link>}
+        {isNormal && <Link to="dashboard">Dashboard</Link>}
         {/* Book Hall Link */}
         <Link
           to="/book"
@@ -43,7 +45,12 @@ const NavBar = () => {
         >
           Book Hall
         </Link>
-
+        <Link
+          to="/timeline"
+          className={`hover:text-[#FF6600] transition-colors ${location.pathname === '/timeline' ? 'text-[#FF6600]' : ''}`}
+        >
+          Timeline
+        </Link>
         {/* Logout Button */}
         <button
           className="bg-[#FF6600] px-4 py-1.5 rounded text-white font-bold hover:bg-orange-700 transition shadow"

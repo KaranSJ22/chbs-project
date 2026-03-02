@@ -41,3 +41,13 @@ export const cancelBooking = async ({ bookingId }) => {
     if (!response.ok) throw new Error(result.error || result.message || 'Cancel Failed');
     return result;
 };
+
+export const getTimelineBookings = async (date) => {
+    const response = await fetch(
+        `${ENDPOINTS.BOOKINGS}/timeline?date=${encodeURIComponent(date)}`,
+        { credentials: 'include' }
+    );
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Failed to load timeline');
+    return result;
+};
