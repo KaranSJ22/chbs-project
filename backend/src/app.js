@@ -28,15 +28,15 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+  origin: ['http://localhost:5173', 'http://localhost:5174'],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
 
 // Rate limiting for login endpoint
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,    
-  max: 10,                     
+  windowMs: 15 * 60 * 1000,
+  max: 10,
   message: { error: "Too many login attempts. Try again after 15 minutes." },
   standardHeaders: true,
   legacyHeaders: false
@@ -63,6 +63,6 @@ app.get("/", (req, res) => {
 
 app.use("/api", apiRoutes);
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(` Server running on port ${PORT}`);
 });

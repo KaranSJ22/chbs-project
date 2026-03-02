@@ -28,7 +28,7 @@ exports.createBooking = async (req, res) => {
 
         const rows = getRows(result);
         const spStatus = rows[0]?.Status;
-        
+
         if (spStatus === 'HOLIDAY_RESTRICTION') {
             return res.status(422).json({ error: 'Bookings cannot be made on public holidays.' });
         }
@@ -107,3 +107,18 @@ exports.cancelBooking = async (req, res) => {
 // can redis be used to store holidays in cache for faster cheicking so that some load from db can be reduced
 // booking made must be show from todays date, not before it
 // redis lock for hallid to prevent race condition
+
+// Timeline — all CONFIRMED bookings for a given date
+exports.getTimelineBookings = async (req, res) => {
+    try {
+        const { date } = req.query;
+        if (!date) {
+            return res.status(400).json({ error: 'date query param is required (YYYY-MM-DD).' });
+        }
+        const result = await callSP(SP.TIMELINE_BY_DATE, { p_Date: date });
+        res.status(200).json(getRows(result));
+    } catch (error) {
+        console.error('Timeline Bookings Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
