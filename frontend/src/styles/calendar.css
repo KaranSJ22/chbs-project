@@ -219,3 +219,92 @@
     max-width: 400px;
   }
 }
+
+/* =========================================
+   Status Indicators (Rings / Circles)
+   ========================================= */
+
+/* Free: Default state, perfectly clean */
+.day.status-free {
+  background-color: transparent;
+  color: var(--text-main);
+}
+
+/* Partial Bookings: Orange Tinted Ring */
+.day.status-partial {
+  color: #ea580c;
+  font-weight: 600;
+  z-index: 1;
+}
+.day.status-partial::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid #0fbfe7; /* Orange outline */
+  background: rgba(42, 183, 202, 0.08); /* Subtle orange fill */
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Holiday: Red Tinted Ring */
+.day.status-holiday {
+  color: #dc2626;
+  font-weight: 700;
+  z-index: 1;
+}
+.day.status-holiday::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid #dc2626; /* Red outline */
+  background: rgba(220, 38, 38, 0.08); /* Subtle red fill */
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Fully Booked: Solid Gray Circle */
+.day.status-full {
+  color: #94a3b8;
+  cursor: not-allowed;
+  z-index: 1;
+}
+.day.status-full::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #f1f5f9; /* Solid light gray */
+  border: 1px solid #e2e8f0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* =========================================
+   Selected State Override
+   ========================================= */
+.day.selected { 
+  background-color: var(--primary) !important; 
+  color: var(--white) !important; 
+  font-weight: 700;
+  border-radius: 50%;
+  z-index: 2;
+}
+
+/* Hide the status rings when a day is actively selected */
+.day.selected::before {
+  display: none;
+}

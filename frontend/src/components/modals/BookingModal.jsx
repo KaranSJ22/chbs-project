@@ -55,7 +55,6 @@ export default function BookingModal({
         if (!isValid) return;
         onConfirm({
             title: title.trim(),
-            // organizer: organizer.trim(),
             meetType,
             linkRequired: linkReq,
             onBehalfOf: isPA ? onBehalfOf : null,
@@ -104,12 +103,6 @@ export default function BookingModal({
                     <label className={labelCls}>Meeting Title <span className="text-rose-400">*</span></label>
                     <input autoFocus type="text" placeholder="e.g. Sprint Planning" value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleConfirm()} className={inputCls} />
                 </div>
-
-                {/* Organizer */}
-                {/* <div className="mb-4">
-                    <label className={labelCls}>Organizer <span className="text-rose-400">*</span></label>
-                    <input type="text" placeholder="e.g. Jane Doe" value={organizer} onChange={(e) => setOrganizer(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleConfirm()} className={inputCls} />
-                </div> */}
 
                 {/* Meeting Type */}
                 <div className="mb-4">

@@ -111,3 +111,27 @@ exports.editMeetingType = async (req, res) => {
         res.status(500).json({ error: 'Failed to update meeting type.' });
     }
 };
+
+// Admin Force-Cancel — any CONFIRMED/PENDING booking, future dates only
+exports.adminCancelBooking = async (req, res) => {
+    const { bookingId } = req.body;
+
+    if (!bookingId) {
+        return res.status(400).json({ error: 'Booking ID is required.' });
+    }
+
+    try {
+        const result = await callSP(SP.ADMIN_CANCEL_BOOKING, { p_BKID: bookingId });
+        const rows = getRows(result);
+        const spStatus = rows[0]?.Status;
+
+        if (spStatus === 'NOT_FOUND') return res.status(404).json({ error: 'Booking not found.' });
+        if (spStatus === 'PAST_BOOKING') return res.status(422).json({ error: 'Only future bookings can be cancelled.' });
+        if (spStatus === 'ALREADY_CLOSED') return res.status(409).json({ error: 'Booking is already cancelled or rejected.' });
+
+        res.status(200).json({ message: 'Booking cancelled by admin successfully.' });
+    } catch (err) {
+        console.error('Admin Cancel Booking Error:', err);
+        res.status(500).json({ error: 'Failed to cancel booking.' });
+    }
+};

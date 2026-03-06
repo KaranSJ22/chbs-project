@@ -15,11 +15,13 @@ module.exports = {
 
     // 4 BOOKING
     CREATE_BOOKING: 'CHSP_BK_HAL',    // Create booking (slot-based, director logic inside)
+    CANCEL_BOOKING_V2: 'CHSP_BK_CNCL_V2', // User cancels own FUTURE booking (date-guarded)
     CANCEL_BOOKING: 'CHSP_BK_CNCL',   // User cancels own booking
 
     //ADMIN 
     ADMIN_GET_PENDING: 'CHSP_AD_PEND',   // Fetch pending bookings for approval queue
     ADMIN_DECIDE_BOOKING: 'CHSP_AD_DECD',   // Approve (CONFIRMED) for director hall
+    ADMIN_CANCEL_BOOKING: 'CHSP_AD_BK_CNCL', // Admin force-cancel future booking
 
     // DASHBOARDS
     USER_DASHBOARD: 'CHSP_BK_DSH_LIVE', // current bookings for user
@@ -36,4 +38,5 @@ module.exports = {
 
     //CALENDAR
     GET_HOLIDAYS: 'CHSP_GET_HOLS',   // All holidays for calendar
+    GET_CALENDAR: 'CHSP_GET_MONTHLY_HEATMAP'
 };
