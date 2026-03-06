@@ -9,6 +9,8 @@ import EmployeeDashboard from './pages/EmployeeDashboard';
 import PAPage from './pages/PAPage';
 import BookingForm from './components/forms/BookingForm';
 import TimelinePage from './pages/TimeLine';
+import CalendarPage from './pages/CalendarPage';
+import InstructionsPage from './pages/InstructionsPage';
 function App() {
   return (
     <AuthProvider>
@@ -45,7 +47,14 @@ function App() {
           <Route element={<ProtectedRoute allowedRoles={['NORMAL', 'PA', 'ADMIN']} />}>
             <Route path="/timeline" element={<TimelinePage />} />
           </Route>
+          <Route element={<ProtectedRoute allowedRoles={['NORMAL', 'PA', 'ADMIN']} />}>
+            <Route path="/calendar" element={<CalendarPage />} />
+          </Route>
+          <Route element={<ProtectedRoute allowedRoles={['NORMAL', 'PA', 'ADMIN']} />}>
+            <Route path="/instructions" element={<InstructionsPage />} />
+          </Route>
           {/* Default redirect */}
+
           <Route path="*" element={<Navigate to="/login" replace />} />
 
         </Routes>

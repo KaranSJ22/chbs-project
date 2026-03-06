@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import HolidayCalendar from '../components/domain/HolidayCalendar/HolidayCalendar';
 import AddHallForm from '../components/forms/AddHallForm';
 import AddMeetTypeForm from '../components/forms/AddMeetTypeForm';
 import DisableHallForm from '../components/forms/DisableHallForm';
@@ -10,132 +9,118 @@ import { getUserDashboard } from '../services/bookingService';
 import RecordsTable from '../components/domain/admin/RecordsTable';
 import NavBar from '../components/common/NavBar';
 
+// All possible views in a flat list
+const VIEWS = [
+  { key: 'ADD_HALL', label: 'Add Hall', type: 'form' },
+  { key: 'DISABLE_HALL', label: 'Disable Hall', type: 'form' },
+  { key: 'ADD_MEET_TYPE', label: 'Add Meet Type', type: 'form' },
+  { key: 'VIEW_HALLS', label: 'All Halls', type: 'records' },
+  { key: 'PENDING', label: 'Pending Requests', type: 'records' },
+  { key: 'MY_HISTORY', label: 'My Booking History', type: 'records' },
+];
+
 const AdminDashboard = () => {
   const { user } = useAuth();
 
-  const [leftView, setLeftView] = useState('ADD_HALL');
-  const [rightView, setRightView] = useState('VIEW_HALLS');
-
+  const [activeView, setActiveView] = useState('ADD_HALL');
   const [recordData, setRecordData] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const getRecords = async () => {
-      // Data fetching now only depends on the rightView
-      const targetViews = ['VIEW_HALLS', 'PENDING', 'MY_HISTORY'];
-      if (!targetViews.includes(rightView)) return;
+  const currentView = VIEWS.find(v => v.key === activeView);
+  const isRecordsView = currentView?.type === 'records';
 
-      setLoading(true);
+  useEffect(() => {
+    if (!isRecordsView) return;
+
+    setLoading(true);
+    const fetchData = async () => {
       try {
         let data = [];
-        if (rightView === 'VIEW_HALLS') data = await fetchAllHalls();
-        else if (rightView === 'PENDING') data = await adminService.getPendingBookings();
-        else if (rightView === 'MY_HISTORY') data = await getUserDashboard();
+        if (activeView === 'VIEW_HALLS') data = await fetchAllHalls();
+        else if (activeView === 'PENDING') data = await adminService.getPendingBookings();
+        else if (activeView === 'MY_HISTORY') data = await getUserDashboard();
         setRecordData(data);
       } catch (err) {
-        console.error("Fetch Error:", err);
+        console.error('Fetch Error:', err);
         setRecordData([]);
       } finally {
         setLoading(false);
       }
     };
-    getRecords();
-  }, [rightView]); // Fetch triggered by rightView changes
+    fetchData();
+  }, [activeView]);
 
   return (
     <div className="min-h-screen bg-[#F3F4F6] flex flex-col font-sans text-[#333333]">
       <NavBar />
 
-      {/* Main Container */}
       <div className="flex flex-col lg:flex-row flex-1 p-4 lg:p-6 gap-6 overflow-hidden">
         {/* Sidebar */}
         <aside className="w-full lg:w-64 flex flex-col gap-6 flex-shrink-0">
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm text-center">
-            <div className="w-16 h-16 bg-[#003366] rounded-full mx-auto mb-3 flex items-center justify-center text-white text-2xl font-bold shadow-inner">
-              {user?.empCode?.charAt(0) || "H"}
+          {/* User card */}
+          <div className="group relative w-full overflow-hidden rounded-2xl bg-white shadow-md">
+            {/* Gradient header with orange accent */}
+            <div className="relative h-20 bg-gradient-to-r from-[#0b3d91] to-[#1a5bb8]">
+              <div className="absolute bottom-0 h-1 w-full bg-orange-500" />
             </div>
-            <h2 className="text-[#003366] font-bold text-base">
-              {user?.empCode || "HSFC105"}
-            </h2>
-            <span className="inline-block mt-2 px-3 py-1 bg-[#FF6600] text-white text-[10px] font-bold uppercase tracking-widest rounded-full">
-              Administrator
-            </span>
+            {/* Avatar — overlaps header */}
+            <div className="relative z-10 -mt-10 flex justify-center">
+              <img
+                src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y&s=256"
+                alt="Profile"
+                className="h-20 w-20 rounded-full border-4 border-white object-cover shadow-lg transition-transform duration-500 ease-out group-hover:scale-110"
+              />
+            </div>
+            {/* Info */}
+            <div className="px-4 py-3 pb-5 text-center">
+              <h2 className="mb-0.5 text-base font-bold text-slate-800">
+                {user?.name || user?.empCode || 'Admin'}
+              </h2>
+              <p className="mb-3 text-xs font-bold tracking-wide text-orange-600">
+                EMP ID: {user?.empCode || '—'}
+              </p>
+              <div className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-1.5">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
+                <span className="text-[10px] font-bold tracking-widest uppercase text-[#0b3d91]">Admin</span>
+              </div>
+            </div>
           </div>
 
+          {/* Flat nav */}
           <nav className="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm flex flex-col gap-1">
             <h2 className="text-[10px] font-bold uppercase text-gray-400 px-3 mb-2 border-b pb-1">
-              Actions (Left Panel)
+              Actions &amp; Records
             </h2>
-            <MenuBtn
-              label="Add Hall"
-              active={leftView === "ADD_HALL"}
-              onClick={() => setLeftView("ADD_HALL")}
-            />
-            <MenuBtn
-              label="Disable Hall"
-              active={leftView === "DISABLE_HALL"}
-              onClick={() => setLeftView("DISABLE_HALL")}
-            />
-            <MenuBtn
-              label="Add Meet Type"
-              active={leftView === "ADD_MEET_TYPE"}
-              onClick={() => setLeftView("ADD_MEET_TYPE")}
-            />
-
-            <h2 className="text-[10px] font-bold uppercase text-gray-400 px-3 mt-4 mb-2 border-b pb-1">
-              Records (Right Panel)
-            </h2>
-            <MenuBtn
-              label="Get All Halls"
-              active={rightView === "VIEW_HALLS"}
-              onClick={() => setRightView("VIEW_HALLS")}
-            />
-            <MenuBtn
-              label="Pending Requests"
-              active={rightView === "PENDING"}
-              onClick={() => setRightView("PENDING")}
-            />
-            <MenuBtn
-              label="My Booking History"
-              active={rightView === "MY_HISTORY"}
-              onClick={() => setRightView("MY_HISTORY")}
-            />
+            {VIEWS.map(v => (
+              <MenuBtn
+                key={v.key}
+                label={v.label}
+                active={activeView === v.key}
+                isRecords={v.type === 'records'}
+                onClick={() => setActiveView(v.key)}
+              />
+            ))}
           </nav>
         </aside>
 
-        {/* Main Content Grid */}
-        <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Section: Centered Forms (Col Span 5) */}
-          <section className="lg:col-span-5 bg-white p-8 rounded-2xl border border-gray-200 shadow-sm min-h-[550px] flex flex-col items-center justify-center">
-            <div className="w-full max-w-md">
-              {/* Form rendering only depends on leftView */}
-              {leftView === "ADD_HALL" && <AddHallForm />}
-              {leftView === "DISABLE_HALL" && <DisableHallForm />}
-              {leftView === "ADD_MEET_TYPE" && <AddMeetTypeForm />}
+        {/* Single main content area */}
+        <main className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm p-8 min-h-[550px] flex flex-col">
 
-              {/* Placeholder for left panel when no action is active */}
-              {leftView === "INFO" && (
-                <div className="flex flex-col items-center justify-center text-slate-300">
-                  <span className="text-8xl font-black opacity-5 tracking-tighter select-none">
-                    CHBS
-                  </span>
-                  <p className="text-sm font-medium italic text-gray-400 -mt-4">
-                    Select an action from the menu
-                  </p>
-                </div>
-              )}
+          {/* Forms */}
+          {!isRecordsView && (
+            <div className="w-full max-w-md mx-auto flex-1 flex flex-col justify-center">
+              {activeView === 'ADD_HALL' && <AddHallForm />}
+              {activeView === 'DISABLE_HALL' && <DisableHallForm />}
+              {activeView === 'ADD_MEET_TYPE' && <AddMeetTypeForm />}
             </div>
-          </section>
+          )}
 
-          <div className="lg:col-span-7 flex flex-col gap-6">
-            <section className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col h-[400px]">
+          {/* Records */}
+          {isRecordsView && (
+            <>
               <h3 className="text-lg font-bold text-[#003366] mb-4 flex items-center gap-2">
-                <span className="w-1.5 h-6 bg-[#007BFF] rounded-full"></span>
-                {rightView === "PENDING"
-                  ? "Pending Requests"
-                  : rightView === "MY_HISTORY"
-                    ? "My History"
-                    : "Hall Records"}
+                <span className="w-1.5 h-6 bg-[#007BFF] rounded-full" />
+                {currentView?.label}
               </h3>
               <div className="overflow-y-auto flex-1 pr-2">
                 {loading ? (
@@ -144,40 +129,36 @@ const AdminDashboard = () => {
                   </div>
                 ) : (
                   <RecordsTable
-                    view={rightView}
+                    view={activeView}
                     data={recordData}
                     onRefresh={() => {
-                      const v = rightView;
-                      setRightView('');
-                      setTimeout(() => setRightView(v), 50);
+                      const v = activeView;
+                      setActiveView('');
+                      setTimeout(() => setActiveView(v), 50);
                     }}
                   />
                 )}
               </div>
-            </section>
-
-            {/* Calendar Section (Bottom Right) */}
-            <section className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 tracking-widest">
-                Upcoming Holidays
-              </h3>
-              <div className="w-full overflow-x-auto">
-                <HolidayCalendar />
-              </div>
-            </section>
-          </div>
+            </>
+          )}
         </main>
       </div>
     </div>
   );
 };
 
-const MenuBtn = ({ label, active, onClick }) => (
+const MenuBtn = ({ label, active, isRecords, onClick }) => (
   <button
     onClick={onClick}
-    className={`w-full text-left px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${active ? 'bg-[#FF6600] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'
+    className={`w-full text-left px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2
+      ${active
+        ? 'bg-[#FF6600] text-white shadow-md'
+        : isRecords
+          ? 'text-gray-600 hover:bg-blue-50 hover:text-[#003366]'
+          : 'text-gray-600 hover:bg-gray-50'
       }`}
   >
+    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${active ? 'bg-white' : isRecords ? 'bg-[#007BFF]' : 'bg-[#FF6600]'}`} />
     {label}
   </button>
 );

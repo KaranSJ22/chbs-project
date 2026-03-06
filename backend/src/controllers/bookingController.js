@@ -74,7 +74,7 @@ exports.getBookingHistory = async (req, res) => {
     }
 };
 
-// Cancel
+// Cancel — uses V2 SP which enforces future-only rule
 exports.cancelBooking = async (req, res) => {
     try {
         const { bookingId } = req.body;
@@ -84,7 +84,7 @@ exports.cancelBooking = async (req, res) => {
             return res.status(400).json({ error: 'Booking ID is required.' });
         }
 
-        const result = await callSP(SP.CANCEL_BOOKING, {
+        const result = await callSP(SP.CANCEL_BOOKING_V2, {
             p_BKID: bookingId,
             p_EmpCode: empCode
         });
@@ -94,6 +94,7 @@ exports.cancelBooking = async (req, res) => {
 
         if (spStatus === 'NOT_FOUND') return res.status(404).json({ error: 'Booking not found.' });
         if (spStatus === 'UNAUTHORIZED') return res.status(403).json({ error: 'You can only cancel your own bookings.' });
+        if (spStatus === 'PAST_BOOKING') return res.status(422).json({ error: 'Only future bookings can be cancelled.' });
         if (spStatus === 'ALREADY_CLOSED') return res.status(409).json({ error: 'Booking is already cancelled or rejected.' });
 
         res.status(200).json({ message: 'Booking cancelled successfully.' });

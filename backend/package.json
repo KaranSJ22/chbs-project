@@ -1,5 +1,5 @@
 {
-  "name": "hscf-chbs",
+  "name": "hsfc-chbs",
   "version": "1.0.0",
   "description": "\"backend service for conference hall booking systemm\"",
   "main": "index.js",

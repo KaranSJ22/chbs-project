@@ -12,8 +12,7 @@ function parseInputDate(val) {
 }
 
 export default function TimelinePage() {
-    const { user } = useAuth();
-
+    const { user, isAdmin } = useAuth();
 
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [halls, setHalls] = useState([]);
@@ -29,7 +28,6 @@ export default function TimelinePage() {
             .catch(() => setHalls([]))
             .finally(() => setHallsLoading(false));
     }, []);
-
 
     const formattedDate = selectedDate.toLocaleDateString('en-US', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -47,7 +45,6 @@ export default function TimelinePage() {
                         onChange={(e) => setSelectedDate(parseInputDate(e.target.value))}
                         className="h-9 px-3 rounded-lg border border-blue-400 bg-[#002244] text-white text-[13px] font-medium outline-none focus:border-[#FF6600] transition-colors cursor-pointer [color-scheme:dark]"
                     />
-
                 </div>
             </div>
             {/* Main */}
@@ -55,7 +52,7 @@ export default function TimelinePage() {
                 <div className="flex items-end justify-between mb-4">
                     <div>
                         <h2 className="text-lg font-bold text-[#003366]">{formattedDate}</h2>
-                        <p className="text-[12px] text-[#64748B] mt-0.5">Click and drag on empty slots to book a hall</p>
+                        <p className="text-[12px] text-[#64748B]">Click and drag on empty slots to book a hall</p>
                     </div>
                     <div className="flex items-center gap-5 text-[12px] text-[#64748B]">
                         <span className="flex items-center gap-1.5">
@@ -81,7 +78,14 @@ export default function TimelinePage() {
                 ) : halls.length === 0 ? (
                     <p className="text-[13px] text-[#64748B]">No halls available for this date.</p>
                 ) : (
-                    <BookingTimeline key={dateStr} halls={halls} selectedDate={selectedDate} />
+                    // 2. Pass isAdmin to the BookingTimeline component
+                    <BookingTimeline
+                        key={dateStr}
+                        halls={halls}
+                        selectedDate={selectedDate}
+                        isAdmin={isAdmin}
+                        currentUser={user}
+                    />
                 )}
             </main>
         </div>

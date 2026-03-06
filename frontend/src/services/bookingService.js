@@ -51,3 +51,15 @@ export const getTimelineBookings = async (date) => {
     if (!response.ok) throw new Error(result.error || 'Failed to load timeline');
     return result;
 };
+
+export const adminCancelBooking = async (bookingId) => {
+    const response = await fetch(`${ENDPOINTS.ADMIN}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ bookingId }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || result.message || 'Admin cancel failed');
+    return result;
+};
