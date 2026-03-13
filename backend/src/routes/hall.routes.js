@@ -13,4 +13,7 @@ router.get('/availability', authMiddleware, hallController.checkAvailability); /
 // Admin only: disable hall (re-enable is automatic via nightly DB event)
 router.put('/status', authMiddleware, requireRole('ADMIN'), hallController.updateHallStatus);
 
+// Admin only: enable hall manually
+router.put('/enable', authMiddleware, requireRole('ADMIN'), hallController.enableHall);
+
 module.exports = router;

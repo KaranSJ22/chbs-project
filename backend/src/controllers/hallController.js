@@ -18,13 +18,11 @@ exports.getAllHalls = async (req, res) => {
 exports.getAvailableHalls = async (req, res) => {
   try {
     const { date } = req.query;
-    // console.log(date);
     if (!date) {
       return res.status(400).json({ error: 'date query param is required (YYYY-MM-DD).' });
     }
 
     const result = await callSP(SP.GET_ALL_HALLSB, { p_Date: date });
-    // console.log(getRows(result));
     res.status(200).json(getRows(result));
   } catch (error) {
     console.error('Get Available Halls Error:', error);
@@ -75,5 +73,26 @@ exports.updateHallStatus = async (req, res) => {
   } catch (error) {
     console.error('Update Hall Status Error:', error);
     res.status(500).json({ error: 'Failed to update hall status.' });
+  }
+};
+
+// Enable Hall
+exports.enableHall = async (req, res) => {
+  try {
+    const { hallId } = req.body;
+
+    if (!hallId) {
+      return res.status(400).json({ error: 'hallId is required.' });
+    }
+
+    await callSP(SP.ADMIN_ENABLE_HALL, {
+      p_HID: hallId,
+      p_Avail: 1
+    });
+
+    res.status(200).json({ message: 'Hall enabled successfully.' });
+  } catch (error) {
+    console.error('Enable Hall Error:', error);
+    res.status(500).json({ error: 'Failed to enable hall.' });
   }
 };

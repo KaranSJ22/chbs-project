@@ -8,6 +8,7 @@ module.exports = {
     ADMIN_ADD_HALL: 'CHSP_HAL_AMAD',  // Add new hall
     ADMIN_EDIT_HALL: 'CHSP_HAL_EDT',   // Edit existing hall
     ADMIN_DISABLE_HALL: 'CHSP_HAL_DIS',   // Disable hall with date range
+    ADMIN_ENABLE_HALL: 'CHSP_HAL_ANB',    // Enable hall immediately
 
     // 3 MEETING TYPE MANAGEMENT (Admin)
     ADMIN_ADD_TYPE: 'CHSP_MTYP_ADD',  // Add meeting type

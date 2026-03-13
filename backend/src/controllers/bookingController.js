@@ -32,6 +32,9 @@ exports.createBooking = async (req, res) => {
         if (spStatus === 'HOLIDAY_RESTRICTION') {
             return res.status(422).json({ error: 'Bookings cannot be made on public holidays.' });
         }
+        if (spStatus === 'HALL_UNDER_MAINTENANCE') {
+            return res.status(422).json({ error: 'This hall is under maintenance on the selected date and cannot be booked.' });
+        }
         if (spStatus === 'ERROR') {
             return res.status(500).json({ error: 'Booking failed due to a database error.' });
         }
