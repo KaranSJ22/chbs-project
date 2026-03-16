@@ -24,5 +24,3 @@ export const handleBookingAction = async (bookingId, action) => {
     throw error;
   }
 };
-
-// need to make it to show only today and future bookings no need to history history

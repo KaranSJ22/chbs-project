@@ -11,6 +11,7 @@ import BookingForm from './components/forms/BookingForm';
 import TimelinePage from './pages/TimeLine';
 import CalendarPage from './pages/CalendarPage';
 import InstructionsPage from './pages/InstructionsPage';
+import LoadingPage from './pages/LoadingPage';
 function App() {
   return (
     <AuthProvider>
@@ -52,6 +53,9 @@ function App() {
           </Route>
           <Route element={<ProtectedRoute allowedRoles={['NORMAL', 'PA', 'ADMIN']} />}>
             <Route path="/instructions" element={<InstructionsPage />} />
+          </Route>
+          <Route element={<ProtectedRoute allowedRoles={['NORMAL', 'PA', 'ADMIN']} />}>
+            <Route path="/loading" element={<LoadingPage />} />
           </Route>
           {/* Default redirect */}
 

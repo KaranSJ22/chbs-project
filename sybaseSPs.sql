@@ -1,0 +1,665 @@
+-- ============================================================
+--  CHBS - FINAL STORED PROCEDURES FILE (SYBASE/T-SQL)
+--  Transformed from MySQL to Sybase T-SQL dialect
+--  Preserves all exact Output Schema Names for frontend
+-- ============================================================
+
+-- ============================================================
+--  AUTHENTICATION
+-- ============================================================
+
+-- Login lookup for regular employees
+IF OBJECT_ID('CHSP_USR_LOG') IS NOT NULL DROP PROCEDURE CHSP_USR_LOG
+GO
+CREATE PROCEDURE CHSP_USR_LOG
+    @p_Code VARCHAR(7)
+AS
+BEGIN
+    SELECT EMPLOYEECODE, EMPLOYEENAME, PASSWRD, ROLEID, STATUS 
+    FROM CHBS_USERINFO WHERE EMPLOYEECODE = @p_Code AND STATUS = 'ACTIVE'
+END
+GO
+
+-- Login lookup for PA (Personal Assistant / Front-Office) users
+IF OBJECT_ID('CHSP_PA_LOG') IS NOT NULL DROP PROCEDURE CHSP_PA_LOG
+GO
+CREATE PROCEDURE CHSP_PA_LOG
+    @p_Code VARCHAR(7)
+AS
+BEGIN
+    SELECT PA_EMPCODE, PA_NAME, PASSWRD, STATUS 
+    FROM CHBS_PA WHERE PA_EMPCODE = @p_Code AND STATUS = 'ACTIVE'
+END
+GO
+
+-- Return all active employees (for drop-downs / on-behalf selection)
+IF OBJECT_ID('CHSP_USR_ALL') IS NOT NULL DROP PROCEDURE CHSP_USR_ALL
+GO
+CREATE PROCEDURE CHSP_USR_ALL
+AS
+BEGIN
+    SELECT EMPLOYEECODE, EMPLOYEENAME, ROLEID FROM CHBS_USERINFO 
+    WHERE STATUS = 'ACTIVE' ORDER BY EMPLOYEENAME ASC
+END
+GO
+
+-- ============================================================
+--  HALL MANAGEMENT
+-- ============================================================
+
+-- Add a new hall
+IF OBJECT_ID('CHSP_HAL_AMAD') IS NOT NULL DROP PROCEDURE CHSP_HAL_AMAD
+GO
+CREATE PROCEDURE CHSP_HAL_AMAD
+    @p_HName VARCHAR(100), 
+    @p_BName VARCHAR(100), 
+    @p_HCode VARCHAR(10), 
+    @p_isDir TINYINT
+AS
+BEGIN
+    INSERT INTO CHBS_HALLS (BUILDNAME, HALLNAME, HALLCODE, ISDIRECTORHALL) 
+    VALUES (@p_BName, @p_HName, @p_HCode, @p_isDir)
+    SELECT @@IDENTITY AS CreatedID, 'SUCCESS' AS Status
+END
+GO
+
+-- Edit an existing hall's details
+IF OBJECT_ID('CHSP_HAL_EDT') IS NOT NULL DROP PROCEDURE CHSP_HAL_EDT
+GO
+CREATE PROCEDURE CHSP_HAL_EDT
+    @p_HID INT, 
+    @p_HName VARCHAR(100), 
+    @p_BName VARCHAR(100), 
+    @p_isDir TINYINT
+AS
+BEGIN
+    UPDATE CHBS_HALLS SET HALLNAME = @p_HName, BUILDNAME = @p_BName, ISDIRECTORHALL = @p_isDir WHERE HALLID = @p_HID
+    SELECT 'SUCCESS' AS Status
+END
+GO
+
+-- Disable a hall for a maintenance window
+IF OBJECT_ID('CHSP_HAL_DIS') IS NOT NULL DROP PROCEDURE CHSP_HAL_DIS
+GO
+CREATE PROCEDURE CHSP_HAL_DIS
+    @p_HID INT, 
+    @p_From DATE, 
+    @p_To DATE
+AS
+BEGIN
+    UPDATE CHBS_HALLS SET ISAVAILABLE = 0, DISABLED_FROM = @p_From, DISABLED_TO = @p_To WHERE HALLID = @p_HID
+    SELECT 'SUCCESS' AS Status
+END
+GO
+
+-- Manually enable (un-disable) a hall that is under maintenance
+IF OBJECT_ID('CHSP_HAL_ANB') IS NOT NULL DROP PROCEDURE CHSP_HAL_ANB
+GO
+CREATE PROCEDURE CHSP_HAL_ANB
+    @p_HID INT, 
+    @p_Avail TINYINT
+AS
+BEGIN
+    UPDATE CHBS_HALLS SET ISAVAILABLE = 1, DISABLED_FROM = NULL, DISABLED_TO = NULL WHERE HALLID = @p_HID
+    SELECT 'SUCCESS' AS Status
+END
+GO
+
+-- Return all halls with full availability details (admin view)
+IF OBJECT_ID('CHSP_HAL_ALL') IS NOT NULL DROP PROCEDURE CHSP_HAL_ALL
+GO
+CREATE PROCEDURE CHSP_HAL_ALL
+AS
+BEGIN
+    SELECT HALLID, HALLNAME, BUILDNAME, HALLCODE, ISAVAILABLE, ISDIRECTORHALL,
+           DISABLED_FROM, DISABLED_TO
+    FROM CHBS_HALLS ORDER BY BUILDNAME, HALLNAME
+END
+GO
+
+-- Return halls available on a given booking date
+IF OBJECT_ID('CHSP_HAL_AVAIL') IS NOT NULL DROP PROCEDURE CHSP_HAL_AVAIL
+GO
+CREATE PROCEDURE CHSP_HAL_AVAIL
+    @p_Date DATE
+AS
+BEGIN
+    SELECT HALLID, HALLNAME, BUILDNAME, HALLCODE, ISDIRECTORHALL
+    FROM CHBS_HALLS
+    WHERE ISAVAILABLE = 1
+      AND (
+          DISABLED_FROM IS NULL                         
+          OR @p_Date NOT BETWEEN DISABLED_FROM AND DISABLED_TO  
+      )
+    ORDER BY BUILDNAME, HALLNAME
+END
+GO
+
+-- Return halls bookable for a given date (used by the booking form / timeline)
+IF OBJECT_ID('CHSP_GET_HALB') IS NOT NULL DROP PROCEDURE CHSP_GET_HALB
+GO
+CREATE PROCEDURE CHSP_GET_HALB
+    @p_MDate DATE
+AS
+BEGIN
+    SELECT HALLID, HALLNAME, BUILDNAME, HALLCODE, ISDIRECTORHALL
+    FROM CHBS_HALLS
+    WHERE
+        -- Case 1: Hall is normally available with no maintenance window
+        (ISAVAILABLE = 1 AND DISABLED_FROM IS NULL)
+        OR
+        -- Case 2: Hall has a maintenance window but the queried date falls OUTSIDE it
+        (DISABLED_FROM IS NOT NULL AND DISABLED_TO IS NOT NULL
+         AND @p_MDate NOT BETWEEN DISABLED_FROM AND DISABLED_TO)
+    ORDER BY BUILDNAME, HALLNAME
+END
+GO
+
+-- ============================================================
+--  MEETING TYPE MANAGEMENT
+-- ============================================================
+
+-- Add a new meeting type
+IF OBJECT_ID('CHSP_MTYP_ADD') IS NOT NULL DROP PROCEDURE CHSP_MTYP_ADD
+GO
+CREATE PROCEDURE CHSP_MTYP_ADD
+    @p_MName VARCHAR(100), 
+    @p_MDesc VARCHAR(100)
+AS
+BEGIN
+    INSERT INTO CHBS_MEETINGTYPES (MEETNAME, MEETDESC) VALUES (@p_MName, @p_MDesc)
+    SELECT @@IDENTITY AS CreatedID, 'SUCCESS' AS Status
+END
+GO
+
+-- Edit an existing meeting type
+IF OBJECT_ID('CHSP_MTYP_EDT') IS NOT NULL DROP PROCEDURE CHSP_MTYP_EDT
+GO
+CREATE PROCEDURE CHSP_MTYP_EDT
+    @p_MID INT, 
+    @p_MName VARCHAR(100), 
+    @p_MDesc VARCHAR(100)
+AS
+BEGIN
+    UPDATE CHBS_MEETINGTYPES SET MEETNAME = @p_MName, MEETDESC = @p_MDesc WHERE MEETID = @p_MID
+    SELECT 'SUCCESS' AS Status
+END
+GO
+
+-- Return all meeting types (for drop-downs)
+IF OBJECT_ID('CHSP_MTYP_ALL') IS NOT NULL DROP PROCEDURE CHSP_MTYP_ALL
+GO
+CREATE PROCEDURE CHSP_MTYP_ALL
+AS
+BEGIN
+    SELECT MEETID, MEETNAME, MEETDESC FROM CHBS_MEETINGTYPES ORDER BY MEETNAME
+END
+GO
+
+-- ============================================================
+--  LOOKUP / DROPDOWN DATA
+-- ============================================================
+
+-- Return all time slots
+IF OBJECT_ID('CHSP_SLT_ALL') IS NOT NULL DROP PROCEDURE CHSP_SLT_ALL
+GO
+CREATE PROCEDURE CHSP_SLT_ALL
+AS
+BEGIN
+    SELECT SLOTID, SLOTTIME FROM CHBS_SLOTINFO ORDER BY SLOTID
+END
+GO
+
+-- Return holidays list (for calendar display)
+IF OBJECT_ID('CHSP_GET_HOLS') IS NOT NULL DROP PROCEDURE CHSP_GET_HOLS
+GO
+CREATE PROCEDURE CHSP_GET_HOLS
+AS
+BEGIN
+    SELECT HOLIDAYDATE, HOLIDAYNAME, HOLIDAYTYPE FROM CHBS_HOLIDAYS
+END
+GO
+
+-- ============================================================
+--  BOOKING
+-- ============================================================
+
+-- Check slot availability for a hall on a date
+IF OBJECT_ID('CHSP_CHK_AVAIL') IS NOT NULL DROP PROCEDURE CHSP_CHK_AVAIL
+GO
+CREATE PROCEDURE CHSP_CHK_AVAIL
+    @p_HallID INT, 
+    @p_Date DATE, 
+    @p_Start INT, 
+    @p_End INT
+AS
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM CHBS_HALLS
+        WHERE HALLID = @p_HallID
+          AND ISAVAILABLE = 0
+          AND @p_Date BETWEEN DISABLED_FROM AND DISABLED_TO
+    )
+    BEGIN
+        SELECT 99 AS ConflictCount -- signals maintenance block
+    END
+    ELSE
+    BEGIN
+        SELECT COUNT(*) AS ConflictCount
+        FROM CHBS_BOOKINGINFO
+        WHERE HALLID = @p_HallID
+          AND BOOKINGDATE = @p_Date
+          AND BOOKINGSTATUS IN ('CONFIRMED', 'PENDING')
+          AND STARTSLOT < @p_End
+          AND ENDSLOT > @p_Start
+    END
+END
+GO
+
+-- Create a hall booking
+IF OBJECT_ID('CHSP_BK_HAL') IS NOT NULL DROP PROCEDURE CHSP_BK_HAL
+GO
+CREATE PROCEDURE CHSP_BK_HAL
+    @p_HID INT, 
+    @p_By VARCHAR(7), 
+    @p_Behalf VARCHAR(7),
+    @p_Ttl VARCHAR(150), 
+    @p_Typ INT, 
+    @p_Start INT, 
+    @p_End INT, 
+    @p_MeetDate DATE, 
+    @p_Lnk VARCHAR(3)
+AS
+BEGIN
+    DECLARE @n_uuid VARCHAR(50)
+    SET @n_uuid = CONVERT(VARCHAR(50), NEWID())
+    DECLARE @conflict_count INT, @is_holiday INT, @v_isDir INT, @is_maintenance INT
+    DECLARE @final_status VARCHAR(10)
+
+    -- Check 1: Holiday guard
+    SELECT @is_holiday = COUNT(*) FROM CHBS_HOLIDAYS WHERE HOLIDAYDATE = @p_MeetDate
+    IF @is_holiday > 0
+    BEGIN
+        SELECT 'HOLIDAY_RESTRICTION' AS Status
+        RETURN
+    END
+
+    -- Check 2: Maintenance guard
+    SELECT @is_maintenance = COUNT(*) FROM CHBS_HALLS
+    WHERE HALLID = @p_HID
+        AND ISAVAILABLE = 0
+        AND @p_MeetDate BETWEEN DISABLED_FROM AND DISABLED_TO
+
+    IF @is_maintenance > 0
+    BEGIN
+        SELECT 'HALL_UNDER_MAINTENANCE' AS Status
+        RETURN
+    END
+
+    BEGIN TRANSACTION
+    
+    SELECT @v_isDir = ISDIRECTORHALL FROM CHBS_HALLS WHERE HALLID = @p_HID
+    
+    SELECT @conflict_count = COUNT(*) FROM CHBS_BOOKINGINFO HOLDLOCK
+    WHERE HALLID = @p_HID AND BOOKINGDATE = @p_MeetDate AND BOOKINGSTATUS IN ('CONFIRMED', 'PENDING')
+        AND (STARTSLOT < @p_End AND ENDSLOT > @p_Start)
+
+    IF @v_isDir = 1 OR @conflict_count > 0
+        SET @final_status = 'PENDING'
+    ELSE
+        SET @final_status = 'CONFIRMED'
+
+    INSERT INTO CHBS_BOOKINGINFO (BOOKINGID, HALLID, BOOKEDBY, ONBEHALFOF, STARTSLOT, ENDSLOT, BOOKINGDATE, BOOKINGSTATUS)
+    VALUES (@n_uuid, @p_HID, @p_By, @p_Behalf, @p_Start, @p_End, @p_MeetDate, @final_status)
+    
+    INSERT INTO CHBS_MEETINFO (BOOKINGID, MEETTITLE, MEETTYPE, LINKREQUIRED)
+    VALUES (@n_uuid, @p_Ttl, @p_Typ, @p_Lnk)
+    
+    COMMIT TRANSACTION
+    SELECT @n_uuid AS BookingID, @final_status AS Status
+END
+GO
+
+
+-- Cancel a booking
+IF OBJECT_ID('CHSP_BK_CNCL_V2') IS NOT NULL DROP PROCEDURE CHSP_BK_CNCL_V2
+GO
+CREATE PROCEDURE CHSP_BK_CNCL_V2
+    @p_BKID VARCHAR(50), 
+    @p_EmpCode VARCHAR(7)
+AS
+BEGIN
+    DECLARE @v_status VARCHAR(20)
+    DECLARE @v_owner  VARCHAR(7)
+    DECLARE @v_date   DATE
+
+    SELECT @v_status = BOOKINGSTATUS, @v_owner = BOOKEDBY, @v_date = BOOKINGDATE
+    FROM CHBS_BOOKINGINFO
+    WHERE BOOKINGID = @p_BKID
+
+    IF @v_owner IS NULL
+    BEGIN
+        SELECT 'NOT_FOUND' AS Status
+    END
+    ELSE IF @v_owner <> @p_EmpCode
+    BEGIN
+        SELECT 'UNAUTHORIZED' AS Status
+    END
+    ELSE IF @v_date <= CONVERT(DATE, GETDATE())
+    BEGIN
+        SELECT 'PAST_BOOKING' AS Status
+    END
+    ELSE IF @v_status NOT IN ('CONFIRMED', 'PENDING')
+    BEGIN
+        SELECT 'ALREADY_CLOSED' AS Status
+    END
+    ELSE
+    BEGIN
+        UPDATE CHBS_BOOKINGINFO
+        SET BOOKINGSTATUS = 'CANCELLED'
+        WHERE BOOKINGID = @p_BKID
+        SELECT 'SUCCESS' AS Status
+    END
+END
+GO
+
+
+-- ============================================================
+--  ADMIN APPROVALS
+-- ============================================================
+
+-- Admin approves or rejects a pending booking
+IF OBJECT_ID('CHSP_AD_DECD') IS NOT NULL DROP PROCEDURE CHSP_AD_DECD
+GO
+CREATE PROCEDURE CHSP_AD_DECD
+    @p_BKID VARCHAR(50), 
+    @p_Stat VARCHAR(20)
+AS
+BEGIN
+    DECLARE @n_HID INT, @n_Date DATE, @n_Start INT, @n_End INT
+    DECLARE @conflict INT, @is_holiday INT
+    SET @conflict = 0
+    SET @is_holiday = 0
+
+    IF @p_Stat NOT IN ('CONFIRMED', 'REJECTED')
+    BEGIN
+        SELECT 'INVALID_STATUS' AS Status
+        RETURN
+    END
+
+    SELECT @n_HID = HALLID, @n_Date = BOOKINGDATE, @n_Start = STARTSLOT, @n_End = ENDSLOT 
+    FROM CHBS_BOOKINGINFO WHERE BOOKINGID = @p_BKID AND BOOKINGSTATUS = 'PENDING'
+
+    IF @n_HID IS NULL
+    BEGIN
+        SELECT 'NOT_FOUND_OR_NOT_PENDING' AS Status
+        RETURN
+    END
+
+    SELECT @is_holiday = COUNT(*) FROM CHBS_HOLIDAYS WHERE HOLIDAYDATE = @n_Date
+
+    IF @is_holiday > 0 AND @p_Stat = 'CONFIRMED'
+    BEGIN
+        SELECT 'CANNOT_APPROVE_ON_HOLIDAY' AS Status
+        RETURN
+    END
+
+    BEGIN TRANSACTION
+    IF @p_Stat = 'CONFIRMED'
+    BEGIN
+        SELECT @conflict = COUNT(*) FROM CHBS_BOOKINGINFO HOLDLOCK
+        WHERE HALLID = @n_HID AND BOOKINGDATE = @n_Date AND BOOKINGSTATUS = 'CONFIRMED'
+            AND BOOKINGID <> @p_BKID AND (STARTSLOT < @n_End AND ENDSLOT > @n_Start)
+    END
+
+    IF @conflict > 0
+    BEGIN
+        ROLLBACK TRANSACTION
+        SELECT 'CONFLICT_EXISTS' AS Status
+    END
+    ELSE
+    BEGIN
+        UPDATE CHBS_BOOKINGINFO SET BOOKINGSTATUS = @p_Stat WHERE BOOKINGID = @p_BKID
+        COMMIT TRANSACTION
+        SELECT 'SUCCESS' AS Status
+    END
+END
+GO
+
+-- Fetch the admin pending-approvals queue
+IF OBJECT_ID('CHSP_AD_PEND') IS NOT NULL DROP PROCEDURE CHSP_AD_PEND
+GO
+CREATE PROCEDURE CHSP_AD_PEND
+AS
+BEGIN
+    SELECT 
+        B.BOOKINGID, B.BOOKINGDATE AS MeetDate, B.CREATED_AT AS SubmittedAt,
+        H.HALLNAME, H.BUILDNAME, H.ISDIRECTORHALL,
+        (S1.SLOTTIME + ' to ' + S2.SLOTTIME) AS TIME_RANGE,
+        M.MEETTITLE, MT.MEETNAME AS MeetType,
+        B.BOOKEDBY, B.ONBEHALFOF
+    FROM CHBS_BOOKINGINFO B
+    JOIN CHBS_HALLS H ON B.HALLID = H.HALLID
+    JOIN CHBS_SLOTINFO S1 ON B.STARTSLOT = S1.SLOTID
+    JOIN CHBS_SLOTINFO S2 ON B.ENDSLOT = S2.SLOTID
+    LEFT JOIN CHBS_MEETINFO M ON B.BOOKINGID = M.BOOKINGID
+    LEFT JOIN CHBS_MEETINGTYPES MT ON M.MEETTYPE = MT.MEETID
+    WHERE B.BOOKINGSTATUS = 'PENDING'
+    ORDER BY B.BOOKINGDATE ASC, S1.SLOTID ASC
+END
+GO
+
+-- Admin cancel of any future booking
+IF OBJECT_ID('CHSP_AD_BK_CNCL') IS NOT NULL DROP PROCEDURE CHSP_AD_BK_CNCL
+GO
+CREATE PROCEDURE CHSP_AD_BK_CNCL
+    @p_BKID VARCHAR(50)
+AS
+BEGIN
+    DECLARE @v_status    VARCHAR(20)
+    DECLARE @v_date      DATE
+
+    SELECT @v_status = BOOKINGSTATUS, @v_date = BOOKINGDATE
+    FROM CHBS_BOOKINGINFO
+    WHERE BOOKINGID = @p_BKID
+
+    IF @v_date IS NULL
+    BEGIN
+        SELECT 'NOT_FOUND' AS Status
+    END
+    ELSE IF @v_date <= CONVERT(DATE, GETDATE())
+    BEGIN
+        SELECT 'PAST_BOOKING' AS Status
+    END
+    ELSE IF @v_status NOT IN ('CONFIRMED', 'PENDING')
+    BEGIN
+        SELECT 'ALREADY_CLOSED' AS Status
+    END
+    ELSE
+    BEGIN
+        UPDATE CHBS_BOOKINGINFO
+        SET BOOKINGSTATUS = 'CANCELLED'
+        WHERE BOOKINGID = @p_BKID
+        SELECT 'SUCCESS' AS Status
+    END
+END
+GO
+
+-- ============================================================
+--  VIEWS & DASHBOARDS
+-- ============================================================
+
+IF OBJECT_ID('VW_CHBS_DASHBOARD') IS NOT NULL DROP VIEW VW_CHBS_DASHBOARD
+GO
+CREATE VIEW VW_CHBS_DASHBOARD AS
+SELECT 
+    B.BOOKINGID,
+    B.BOOKINGDATE     AS MeetDate,
+    B.BOOKINGSTATUS,
+    H.HALLNAME,
+    H.BUILDNAME,
+    H.ISDIRECTORHALL,
+    (S1.SLOTTIME + ' to ' + S2.SLOTTIME) AS TIME_RANGE,
+    M.MEETTITLE,
+    MT.MEETNAME       AS MeetType,
+    B.BOOKEDBY,
+    B.ONBEHALFOF,
+    B.CREATED_AT      AS TransactionTime
+FROM CHBS_BOOKINGINFO B
+JOIN  CHBS_HALLS       H  ON B.HALLID    = H.HALLID
+JOIN  CHBS_SLOTINFO    S1 ON B.STARTSLOT = S1.SLOTID
+JOIN  CHBS_SLOTINFO    S2 ON B.ENDSLOT   = S2.SLOTID
+LEFT JOIN CHBS_MEETINFO      M  ON B.BOOKINGID = M.BOOKINGID
+LEFT JOIN CHBS_MEETINGTYPES  MT ON M.MEETTYPE  = MT.MEETID
+WHERE B.BOOKINGSTATUS IN ('CONFIRMED', 'PENDING')
+GO
+
+IF OBJECT_ID('VW_CHBS_HISTORY') IS NOT NULL DROP VIEW VW_CHBS_HISTORY
+GO
+CREATE VIEW VW_CHBS_HISTORY AS
+SELECT 
+    BH.BOOKINGID,
+    BH.BOOKINGDATE    AS MeetDate,
+    BH.BOOKINGSTATUS,
+    H.HALLNAME,
+    H.BUILDNAME,
+    H.ISDIRECTORHALL,
+    (S1.SLOTTIME + ' to ' + S2.SLOTTIME) AS TIME_RANGE,
+    MH.MEETTITLE,
+    MT.MEETNAME       AS MeetType,
+    BH.BOOKEDBY,
+    BH.ONBEHALFOF,
+    BH.CREATED_AT     AS TransactionTime
+FROM CHBS_BK_HIST BH
+JOIN  CHBS_HALLS       H  ON BH.HALLID    = H.HALLID
+JOIN  CHBS_SLOTINFO    S1 ON BH.STARTSLOT = S1.SLOTID
+JOIN  CHBS_SLOTINFO    S2 ON BH.ENDSLOT   = S2.SLOTID
+LEFT JOIN CHBS_MT_HIST       MH ON BH.BOOKINGID = MH.BOOKINGID
+LEFT JOIN CHBS_MEETINGTYPES  MT ON MH.MEETTYPE  = MT.MEETID
+GO
+
+-- Employee live (active) bookings dashboard
+IF OBJECT_ID('CHSP_BK_DSH_LIVE') IS NOT NULL DROP PROCEDURE CHSP_BK_DSH_LIVE
+GO
+CREATE PROCEDURE CHSP_BK_DSH_LIVE
+    @p_EmpCode VARCHAR(7)
+AS
+BEGIN
+    SELECT * FROM VW_CHBS_DASHBOARD
+    WHERE BOOKEDBY = @p_EmpCode OR ONBEHALFOF = @p_EmpCode
+    ORDER BY MeetDate DESC
+END
+GO
+
+-- Employee historical bookings dashboard
+IF OBJECT_ID('CHSP_BK_DSH_HIST') IS NOT NULL DROP PROCEDURE CHSP_BK_DSH_HIST
+GO
+CREATE PROCEDURE CHSP_BK_DSH_HIST
+    @p_EmpCode VARCHAR(7)
+AS
+BEGIN
+    SELECT * FROM VW_CHBS_HISTORY
+    WHERE BOOKEDBY = @p_EmpCode OR ONBEHALFOF = @p_EmpCode
+    ORDER BY MeetDate DESC
+END
+GO
+
+-- Booking timeline: all confirmed bookings for a given date
+IF OBJECT_ID('CHSP_BKDT') IS NOT NULL DROP PROCEDURE CHSP_BKDT
+GO
+CREATE PROCEDURE CHSP_BKDT
+    @p_Date DATE
+AS
+BEGIN
+    SELECT 
+        B.BOOKINGID,
+        B.HALLID,
+        H.HALLNAME,
+        H.BUILDNAME,
+        B.BOOKINGDATE AS MeetDate,
+        B.BOOKINGSTATUS,
+        B.STARTSLOT,
+        B.ENDSLOT,
+        S1.SLOTTIME AS StartTime,
+        S2.SLOTTIME AS EndTime,
+        M.MEETTITLE,
+        MT.MEETNAME AS MeetType,
+        B.BOOKEDBY,
+        B.ONBEHALFOF
+    FROM CHBS_BOOKINGINFO B
+    JOIN CHBS_HALLS H      ON B.HALLID    = H.HALLID
+    JOIN CHBS_SLOTINFO S1  ON B.STARTSLOT = S1.SLOTID
+    JOIN CHBS_SLOTINFO S2  ON B.ENDSLOT   = S2.SLOTID
+    LEFT JOIN CHBS_MEETINFO M        ON B.BOOKINGID = M.BOOKINGID
+    LEFT JOIN CHBS_MEETINGTYPES MT   ON M.MEETTYPE  = MT.MEETID
+    WHERE B.BOOKINGDATE  = @p_Date
+      AND B.BOOKINGSTATUS = 'CONFIRMED'
+    ORDER BY S1.SLOTID ASC, H.BUILDNAME ASC, H.HALLNAME ASC
+END
+GO
+
+-- Admin calendar heatmap: daily booking load between two dates
+IF OBJECT_ID('CHSP_GET_MONTHLY_HEATMAP') IS NOT NULL DROP PROCEDURE CHSP_GET_MONTHLY_HEATMAP
+GO
+CREATE PROCEDURE CHSP_GET_MONTHLY_HEATMAP
+    @p_StartDate DATE, 
+    @p_EndDate DATE
+AS
+BEGIN
+    SELECT 
+        B.BOOKINGDATE AS MeetDate,
+        SUM(B.ENDSLOT - B.STARTSLOT) AS ConsumedSlots,
+        (
+            (SELECT COUNT(*) FROM CHBS_HALLS H 
+             WHERE H.ISAVAILABLE = 1 
+               AND (H.DISABLED_FROM IS NULL OR B.BOOKINGDATE NOT BETWEEN H.DISABLED_FROM AND H.DISABLED_TO)
+            ) * (SELECT COUNT(*) FROM CHBS_SLOTINFO)
+        ) AS TotalDailySlots,
+        CASE
+            WHEN SUM(B.ENDSLOT - B.STARTSLOT) >= (
+                (SELECT COUNT(*) FROM CHBS_HALLS H WHERE H.ISAVAILABLE = 1 AND (H.DISABLED_FROM IS NULL OR B.BOOKINGDATE NOT BETWEEN H.DISABLED_FROM AND H.DISABLED_TO)) 
+                * (SELECT COUNT(*) FROM CHBS_SLOTINFO) * 0.9
+            ) THEN 'FULL'
+            ELSE 'PARTIAL'
+        END AS DayStatus
+    FROM CHBS_BOOKINGINFO B
+    WHERE B.BOOKINGDATE BETWEEN @p_StartDate AND @p_EndDate
+      AND B.BOOKINGSTATUS IN ('CONFIRMED', 'PENDING')
+    GROUP BY B.BOOKINGDATE
+END
+GO
+
+
+-- ============================================================
+--  AUTOMATED MAINTENANCE JOB
+-- ============================================================
+
+-- Archives old cancelled/rejected bookings, cleans up, and auto-enables halls
+IF OBJECT_ID('CHSP_AD_MAINTENANCE_AUTO') IS NOT NULL DROP PROCEDURE CHSP_AD_MAINTENANCE_AUTO
+GO
+CREATE PROCEDURE CHSP_AD_MAINTENANCE_AUTO
+AS
+BEGIN
+    BEGIN TRANSACTION
+    
+    -- Safe Archive (Prevents PK Violation)
+    INSERT INTO CHBS_BK_HIST 
+    SELECT * FROM CHBS_BOOKINGINFO B
+    WHERE B.BOOKINGDATE < DATEADD(DAY, -30, CONVERT(DATE, GETDATE())) 
+      AND B.BOOKINGSTATUS IN ('CANCELLED', 'REJECTED')
+      AND NOT EXISTS (SELECT 1 FROM CHBS_BK_HIST BH WHERE BH.BOOKINGID = B.BOOKINGID)
+    
+    INSERT INTO CHBS_MT_HIST 
+    SELECT M.* FROM CHBS_MEETINFO M JOIN CHBS_BK_HIST H ON M.BOOKINGID = H.BOOKINGID
+    WHERE NOT EXISTS (SELECT 1 FROM CHBS_MT_HIST MH WHERE MH.BOOKINGID = M.BOOKINGID)
+    
+    DELETE FROM CHBS_MEETINFO WHERE BOOKINGID IN (SELECT BOOKINGID FROM CHBS_BK_HIST)
+    DELETE FROM CHBS_BOOKINGINFO WHERE BOOKINGID IN (SELECT BOOKINGID FROM CHBS_BK_HIST)
+    
+    -- Auto-Enable Halls whose maintenance window has expired
+    UPDATE CHBS_HALLS SET ISAVAILABLE = 1, DISABLED_FROM = NULL, DISABLED_TO = NULL 
+    WHERE ISAVAILABLE = 0 AND DISABLED_TO < CONVERT(DATE, GETDATE())
+    
+    COMMIT TRANSACTION
+END
+GO

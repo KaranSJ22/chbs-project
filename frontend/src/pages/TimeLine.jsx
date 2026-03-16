@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { useAuth } from '../context/AuthContext';
-import { fetchAllHalls } from '../services/hallService';
+import { fetchAvailableHalls } from '../services/hallService';
 import BookingTimeline from '../components/timeline/BookingTimeline';
 import NavBar from '../components/common/NavBar';
 
@@ -13,21 +13,19 @@ function parseInputDate(val) {
 
 export default function TimelinePage() {
     const { user, isAdmin } = useAuth();
-
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [halls, setHalls] = useState([]);
-    const [hallsLoading, setHallsLoading] = useState(false);
+    const [hallsLoading, setHallsLoading] = useState(true);
 
     const pad = (n) => String(n).padStart(2, '0');
     const dateStr = `${selectedDate.getFullYear()}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}`;
 
     useEffect(() => {
-        setHallsLoading(true);
-        fetchAllHalls()
+        fetchAvailableHalls(dateStr)
             .then(setHalls)
             .catch(() => setHalls([]))
             .finally(() => setHallsLoading(false));
-    }, []);
+    }, [dateStr]); // re-fetch whenever the selected date changes
 
     const formattedDate = selectedDate.toLocaleDateString('en-US', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',

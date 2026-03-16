@@ -3,6 +3,8 @@ import { fetchAvailableHalls } from '../../services/hallService';
 import { fetchAllMeetingTypes } from '../../services/meetingTypeService';
 import { createBooking } from '../../services/bookingService';
 import { ENDPOINTS } from '../../config/api';
+import BookingDetailsPanel from './BookingDetailsPanel';
+import TimeRangePanel from './TimeRangePanel';
 
 // 32 × 15-minute slots: 9:00 → 17:00
 const SLOTS = Array.from({ length: 32 }, (_, i) => {
@@ -32,7 +34,7 @@ const INITIAL_FORM = {
 const BookingForm = ({ isPA = false }) => {
   const [halls, setHalls] = useState([]);
   const [meetingTypes, setMeetingTypes] = useState([]);
-  const [employees, setEmployees] = useState([]); 
+  const [employees, setEmployees] = useState([]);
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [loading, setLoading] = useState(false);
   const [hallsLoading, setHallsLoading] = useState(false);
@@ -41,7 +43,7 @@ const BookingForm = ({ isPA = false }) => {
   const [error, setError] = useState(null);
   const [status, setStatus] = useState(null);
 
-  // Load meeting type
+  // Load meeting types
   useEffect(() => {
     setMtLoading(true);
     fetchAllMeetingTypes()
@@ -50,7 +52,7 @@ const BookingForm = ({ isPA = false }) => {
       .finally(() => setMtLoading(false));
   }, []);
 
-  //  Load employees for on-behalf dropdown
+  // Load employees for on-behalf dropdown (PA only)
   useEffect(() => {
     if (!isPA) return;
     setEmpLoading(true);
@@ -61,11 +63,11 @@ const BookingForm = ({ isPA = false }) => {
       .finally(() => setEmpLoading(false));
   }, [isPA]);
 
-  //  Load halls when date is picked 
+  // Load halls when date is picked
   useEffect(() => {
     if (!formData.date) { setHalls([]); return; }
     setHallsLoading(true);
-    setFormData(prev => ({ ...prev, hallId: '' })); 
+    setFormData(prev => ({ ...prev, hallId: '' }));
     fetchAvailableHalls(formData.date)
       .then(setHalls)
       .catch(() => setError('Failed to load available halls for this date.'))
@@ -95,7 +97,6 @@ const BookingForm = ({ isPA = false }) => {
       return next;
     });
 
-  // Submit 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -137,29 +138,6 @@ const BookingForm = ({ isPA = false }) => {
     }
   };
 
-  // ── Shared select wrapper ───────────────────────────────────────────────────
-  const SelectField = ({ label, required, children, ...props }) => (
-    <div>
-      <label className="block text-sm font-semibold text-gray-700 mb-2">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <div className="relative">
-        <select
-          className="w-full border border-gray-300 p-3 pr-10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
-          {...props}
-        >
-          {children}
-        </select>
-        <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-      </div>
-    </div>
-  );
-
-  //  Render
   return (
     <div className="max-w-6xl mx-auto bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl">
       {/* Header */}
@@ -186,7 +164,9 @@ const BookingForm = ({ isPA = false }) => {
         </div>
       )}
       {status && (
-        <div className={`border-l-4 p-4 mb-6 rounded-r-lg font-medium text-sm ${status.type === 'success' ? 'bg-green-50 border-green-500 text-green-800' : 'bg-red-50 border-red-500 text-red-800'
+        <div className={`border-l-4 p-4 mb-6 rounded-r-lg font-medium text-sm ${status.type === 'success'
+            ? 'bg-green-50 border-green-500 text-green-800'
+            : 'bg-red-50 border-red-500 text-red-800'
           }`}>
           {status.text}
         </div>
@@ -194,172 +174,26 @@ const BookingForm = ({ isPA = false }) => {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-          {/* ── LEFT: Booking Details ── */}
-          <div className="bg-white rounded-lg shadow-sm p-6 space-y-5">
-            <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Booking Details</h3>
-
-            {/* On Behalf Of */}
-            {isPA && (
-              <SelectField
-                label="Book On Behalf Of"
-                required
-                value={formData.onBehalfOf}
-                onChange={set('onBehalfOf')}
-                disabled={empLoading}
-              >
-                <option value="">{empLoading ? 'Loading employees...' : '-- Select Officer --'}</option>
-                {employees.map(emp => (
-                  <option key={emp.EMPLOYEECODE} value={emp.EMPLOYEECODE}>
-                    {emp.EMPLOYEENAME} ({emp.EMPLOYEECODE})
-                  </option>
-                ))}
-              </SelectField>
-            )}
-
-            {/* Date — must be picked BEFORE hall to filter available halls */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Booking Date <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={formData.date}
-                onChange={set('date')}
-                min={new Date().toISOString().split('T')[0]}
-                required
-              />
-            </div>
-
-            {/* Hall — filtered by date */}
-            <SelectField
-              label="Conference Hall"
-              required
-              value={formData.hallId}
-              onChange={set('hallId')}
-              disabled={!formData.date || hallsLoading}
-            >
-              <option value="">
-                {!formData.date ? 'Select a date first' : hallsLoading ? 'Loading halls...' : halls.length === 0 ? 'No halls available for this date' : '-- Select a Hall --'}
-              </option>
-              {halls.map(hall => (
-                <option key={hall.HALLID} value={hall.HALLID}>
-                  {hall.HALLNAME} ({hall.HALLCODE}) — {hall.BUILDNAME}
-                  {hall.ISDIRECTORHALL ? ' ★' : ''}
-                </option>
-              ))}
-            </SelectField>
-
-            {/* Meeting Title */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Meeting Title <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="e.g. Project Review Meeting"
-                value={formData.title}
-                onChange={set('title')}
-                maxLength={150}
-                required
-              />
-            </div>
-
-            {/* Meeting Type */}
-            <SelectField
-              label="Meeting Type"
-              required
-              value={formData.meetType}
-              onChange={set('meetType')}
-              disabled={mtLoading}
-            >
-              <option value="">{mtLoading ? 'Loading...' : '-- Select Type --'}</option>
-              {meetingTypes.map(t => (
-                <option key={t.MEETID} value={t.MEETID}>{t.MEETNAME}</option>
-              ))}
-            </SelectField>
-
-            {/* Link */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                 Conference Link Required?
-              </label>
-              <div className="flex gap-6">
-                {['YES', 'NO'].map(v => (
-                  <label key={v} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="linkRequired"
-                      value={v}
-                      checked={formData.linkRequired === v}
-                      onChange={set('linkRequired')}
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span className="text-sm font-medium text-gray-700">{v === 'YES' ? 'Yes' : 'No'}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT */}
-          <div className="bg-white rounded-lg shadow-sm p-6 space-y-5">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Select Time Range</h3>
-              <p className="text-xs text-gray-500 mt-2">15-minute intervals, 9:00 AM – 5:00 PM</p>
-            </div>
-
-            {/* Start Time */}
-            <SelectField
-              label="Start Time"
-              required
-              value={formData.startSlot}
-              onChange={set('startSlot')}
-            >
-              <option value="">-- Select Start Time --</option>
-              {SLOTS.map(s => (
-                <option key={s.id} value={s.id}>{s.label}</option>
-              ))}
-            </SelectField>
-
-            {/* End Time */}
-            <SelectField
-              label="End Time"
-              required
-              value={formData.endSlot}
-              onChange={set('endSlot')}
-              disabled={!formData.startSlot}
-            >
-              <option value="">{!formData.startSlot ? 'Select start time first' : '-- Select End Time --'}</option>
-              {endSlotOptions.map(s => (
-                <option key={s.id} value={s.id}>{s.label}</option>
-              ))}
-            </SelectField>
-
-            {/* Duration summary */}
-            {formData.startSlot && formData.endSlot && (
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-4">
-                <p className="text-sm font-semibold text-gray-700 mb-1">Selected Range</p>
-                <p className="text-lg font-bold text-blue-700">
-                  {SLOTS[parseInt(formData.startSlot) - 1].label}
-                  {' → '}
-                  {SLOTS[parseInt(formData.endSlot) - 1].label}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Duration: <strong>{fmtDuration(durationMin)}</strong>
-                  {' · '}
-                  Slots: <strong>{parseInt(formData.endSlot) - parseInt(formData.startSlot) + 1}</strong>
-                </p>
-                {halls.find(h => h.HALLID == formData.hallId)?.ISDIRECTORHALL === 1 && (
-                  <p className="text-xs text-amber-700 bg-amber-50 rounded mt-2 px-2 py-1">
-                    ★ Director Hall — booking will require admin approval regardless of availability.
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+          <BookingDetailsPanel
+            formData={formData}
+            set={set}
+            halls={halls}
+            hallsLoading={hallsLoading}
+            meetingTypes={meetingTypes}
+            mtLoading={mtLoading}
+            employees={employees}
+            empLoading={empLoading}
+            isPA={isPA}
+          />
+          <TimeRangePanel
+            formData={formData}
+            set={set}
+            SLOTS={SLOTS}
+            endSlotOptions={endSlotOptions}
+            durationMin={durationMin}
+            fmtDuration={fmtDuration}
+            halls={halls}
+          />
         </div>
 
         {/* Submit */}
@@ -368,8 +202,8 @@ const BookingForm = ({ isPA = false }) => {
             type="submit"
             disabled={loading || hallsLoading}
             className={`w-full py-4 px-6 rounded-lg font-semibold text-white transition-all duration-200 flex items-center justify-center gap-2 ${loading || hallsLoading
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
               }`}
           >
             {loading ? (

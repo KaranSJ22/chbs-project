@@ -5,7 +5,7 @@ const {callSP}=require('../queries/spWrapper');
 
 exports.getAllMeetingTypes = async (req, res) => {
     try {
-        const meetingTypes = await MeetingType.findAll();
+        const meetingTypes = await callSP(SP.GET_ALL_TYPES);
 
         res.status(200).json(meetingTypes);
     } catch (error) {

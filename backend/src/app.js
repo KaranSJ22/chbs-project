@@ -1,3 +1,72 @@
+// require('dotenv').config();
+// const express = require("express");
+// const cors = require("cors");
+// const helmet = require("helmet");
+// const morgan = require("morgan");
+// const cookieParser = require("cookie-parser");
+// const rateLimit = require("express-rate-limit");
+// const db = require("./models");
+// const apiRoutes = require("./routes");
+// const app = express();
+// const PORT = process.env.SERVER_PORT;
+
+// // --- LOGGING FIRST ---
+// app.use(morgan("dev"));
+
+
+// app.use(helmet({
+//   contentSecurityPolicy: {
+//     directives: {
+//       defaultSrc: ["'self'"],
+//       scriptSrc: ["'self'"],
+//       styleSrc: ["'self'", "'unsafe-inline'"],
+//       imgSrc: ["'self'", "data:"],
+//       connectSrc: ["'self'"],
+//     }
+//   },
+//   crossOriginEmbedderPolicy: false
+// }));
+
+// app.use(cors({
+//   origin: ['http://localhost:5173', 'http://localhost:5174'],
+//   methods: ["GET", "POST", "PUT"],
+//   credentials: true
+// }));
+
+// // Rate limiting for login endpoint
+// const loginLimiter = rateLimit({
+//   windowMs: 15 * 60 * 1000,
+//   max: 10,
+//   message: { error: "Too many login attempts. Try again after 15 minutes." },
+//   standardHeaders: true,
+//   legacyHeaders: false
+// });
+// app.use("/api/auth/login", loginLimiter);
+
+// app.use(cookieParser());
+// app.use(express.json());
+// app.use(express.urlencoded({ extended: true }));
+
+// // --- DATABASE SYNC ---
+// db.sequelize.sync()
+//   .then(() => {
+//     console.log(" Database in sync.");
+//   })
+//   .catch((err) => {
+//     console.error("Database Connection Failed ", err.message);
+//   });
+
+// // --- ROUTES ---
+// app.get("/", (req, res) => {
+//   res.json({ message: "HSFC booking System API is running" });
+// });
+
+// app.use("/api", apiRoutes);
+
+// app.listen(PORT, '0.0.0.0', () => {
+//   console.log(` Server running on port ${PORT}`);
+// });
+
 require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
@@ -5,14 +74,16 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
-const db = require("./models");
+
+// 1. Import the DB pool initializer instead of the old Sequelize db object
+const { initDbPool } = require("./models"); 
 const apiRoutes = require("./routes");
+
 const app = express();
-const PORT = process.env.SERVER_PORT;
+const PORT = process.env.SERVER_PORT || 3000;
 
 // --- LOGGING FIRST ---
 app.use(morgan("dev"));
-
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -47,15 +118,6 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- DATABASE SYNC ---
-db.sequelize.sync()
-  .then(() => {
-    console.log(" Database in sync.");
-  })
-  .catch((err) => {
-    console.error("Database Connection Failed ", err.message);
-  });
-
 // --- ROUTES ---
 app.get("/", (req, res) => {
   res.json({ message: "HSFC booking System API is running" });
@@ -63,6 +125,15 @@ app.get("/", (req, res) => {
 
 app.use("/api", apiRoutes);
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(` Server running on port ${PORT}`);
-});
+// --- DATABASE INIT & SERVER START ---
+// 2. Initialize the ODBC pool FIRST, then start listening for traffic
+initDbPool()
+  .then(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(` Server running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error(" Server failed to start: Database Connection Error", err);
+    process.exit(1);
+  });

@@ -18,14 +18,14 @@ const HolidayCalendarPage = () => {
   const [loading, setLoading] = useState(false);
 
 
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth();
+
   useEffect(() => {
     const loadMonthData = async () => {
       setLoading(true);
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth() + 1;
-
       try {
-        const data = await calendarService.getMonthlyData(year, month);
+        const data = await calendarService.getMonthlyData(currentYear, currentMonth + 1);
         setCalendarData(data || {});
       } catch (error) {
         console.error("Failed to fetch calendar data:", error);
@@ -35,11 +35,9 @@ const HolidayCalendarPage = () => {
     };
 
     loadMonthData();
-  }, [currentDate.getFullYear(), currentDate.getMonth()]);
+  }, [currentYear, currentMonth]);
 
   const { days, monthName, year } = useMemo(() => {
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth();
     const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
     const lastDateOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
@@ -58,7 +56,7 @@ const HolidayCalendarPage = () => {
       monthName: currentDate.toLocaleString('default', { month: 'long' }),
       year: currentYear
     };
-  }, [currentDate]);
+  }, [currentDate, currentYear, currentMonth]);
 
   const formatDateKey = (date) => {
     if (!date) return null;
@@ -91,7 +89,7 @@ const HolidayCalendarPage = () => {
             <div className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-opacity duration-200 ${loading ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
 
               {/* Calendar Controls */}
-              <div className="flex items-center justify-between bg-blue-600 px-5 py-4 text-white">
+              <div className="flex items-center justify-between bg-[#042847] px-5 py-4 text-white">
                 <button onClick={() => changeMonth(-1)} className="rounded-md p-1 transition-colors hover:bg-blue-500">
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
                 </button>
