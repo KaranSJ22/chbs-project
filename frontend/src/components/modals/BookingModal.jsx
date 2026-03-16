@@ -23,7 +23,7 @@ export default function BookingModal({
     const [meetingTypes, setMeetingTypes] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [mtLoading, setMtLoading] = useState(true);
-    const [empLoading, setEmpLoading] = useState(false);
+    const [empLoading, setEmpLoading] = useState(isPA);
 
     // Load meeting types
     useEffect(() => {
@@ -36,7 +36,6 @@ export default function BookingModal({
     // Load employees (only for PA)
     useEffect(() => {
         if (!isPA) return;
-        setEmpLoading(true);
         fetch(`${ENDPOINTS.USERS}/all`, { credentials: 'include' })
             .then((r) => r.json())
             .then(setEmployees)

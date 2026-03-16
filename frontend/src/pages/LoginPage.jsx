@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, isAuthenticated, loading: sessionLoading, user } = useAuth();
+  const { login, isAuthenticated, loading: sessionLoading } = useAuth();
 
   const [loginType, setLoginType] = useState('EMPLOYEE'); // 'EMPLOYEE' | 'PA'
   const [empDetails, setEmpDetails] = useState({ empCode: '', password: '' });
@@ -13,9 +13,7 @@ const LoginPage = () => {
   if (sessionLoading) return null;
   
   if (isAuthenticated) {
-    if (user.role === 'ADMIN') return <Navigate to="/admin" replace />;
-    if (user.role === 'PA') return <Navigate to="/pa" replace />;
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/loading" replace />;
   }
 
   const handleChange = (e) => {
@@ -30,12 +28,9 @@ const LoginPage = () => {
 
     try {
       const { empCode, password } = empDetails;
-      const response = await login(empCode, password, loginType);
-      const role = response.user.role;
+      await login(empCode, password, loginType);
 
-      if (role === 'ADMIN') navigate('/admin');
-      else if (role === 'PA') navigate('/pa');
-      else navigate('/dashboard');
+      navigate('/loading', { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {

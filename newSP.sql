@@ -42,7 +42,7 @@ END //
 
 CREATE PROCEDURE CHSP_HAL_ANB(IN p_HID INT, IN p_Avail TINYINT)
 BEGIN
-    UPDATE CHBS_HALLS SET ISAVAILABLE=0, DISABLED_FROM=NULL,DISABLED_TO=NULL WHERE HALLID=p_HID
+    UPDATE CHBS_HALLS SET ISAVAILABLE=1, DISABLED_FROM=NULL,DISABLED_TO=NULL WHERE HALLID=p_HID;
     SELECT 'SUCCESS' AS Status;
 END //
 
@@ -83,31 +83,44 @@ CREATE PROCEDURE CHSP_BK_HAL(
 )
 BEGIN
     DECLARE n_uuid VARCHAR(50) DEFAULT UUID();
-    DECLARE conflict_count, is_holiday, v_isDir INT DEFAULT 0;
+    DECLARE conflict_count, is_holiday, v_isDir, is_maintenance INT DEFAULT 0;
     DECLARE final_status ENUM('CONFIRMED', 'PENDING', 'CANCELLED', 'REJECTED');
+
+    -- Check 1: Holiday guard
     SELECT COUNT(*) INTO is_holiday FROM CHBS_HOLIDAYS WHERE HOLIDAYDATE = p_MeetDate;
     IF is_holiday > 0 THEN
         SELECT 'HOLIDAY_RESTRICTION' AS Status;
+
+    -- Check 2: Maintenance guard (hall disabled and date falls within its maintenance window)
     ELSE
-        BEGIN
-            DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; SELECT 'ERROR' AS Status; END;
-            START TRANSACTION;
-            SELECT ISDIRECTORHALL INTO v_isDir FROM CHBS_HALLS WHERE HALLID = p_HID;
-            SELECT COUNT(*) INTO conflict_count FROM CHBS_BOOKINGINFO
-            WHERE HALLID = p_HID AND BOOKINGDATE = p_MeetDate AND BOOKINGSTATUS IN ('CONFIRMED', 'PENDING')
-              AND (STARTSLOT < p_End AND ENDSLOT > p_Start) FOR UPDATE;
+        SELECT COUNT(*) INTO is_maintenance FROM CHBS_HALLS
+        WHERE HALLID = p_HID
+          AND ISAVAILABLE = 0
+          AND p_MeetDate BETWEEN DISABLED_FROM AND DISABLED_TO;
 
-            IF v_isDir = 1 OR conflict_count > 0 THEN SET final_status = 'PENDING';
-            ELSE SET final_status = 'CONFIRMED';
-            END IF;
+        IF is_maintenance > 0 THEN
+            SELECT 'HALL_UNDER_MAINTENANCE' AS Status;
+        ELSE
+            BEGIN
+                DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; SELECT 'ERROR' AS Status; END;
+                START TRANSACTION;
+                SELECT ISDIRECTORHALL INTO v_isDir FROM CHBS_HALLS WHERE HALLID = p_HID;
+                SELECT COUNT(*) INTO conflict_count FROM CHBS_BOOKINGINFO
+                WHERE HALLID = p_HID AND BOOKINGDATE = p_MeetDate AND BOOKINGSTATUS IN ('CONFIRMED', 'PENDING')
+                  AND (STARTSLOT < p_End AND ENDSLOT > p_Start) FOR UPDATE;
 
-            INSERT INTO CHBS_BOOKINGINFO (BOOKINGID, HALLID, BOOKEDBY, ONBEHALFOF, STARTSLOT, ENDSLOT, BOOKINGDATE, BOOKINGSTATUS)
-            VALUES (n_uuid, p_HID, p_By, p_Behalf, p_Start, p_End, p_MeetDate, final_status);
-            INSERT INTO CHBS_MEETINFO (BOOKINGID, MEETTITLE, MEETTYPE, LINKREQUIRED)
-            VALUES (n_uuid, p_Ttl, p_Typ, p_Lnk);
-            COMMIT;
-            SELECT n_uuid AS BookingID, final_status AS Status;
-        END;
+                IF v_isDir = 1 OR conflict_count > 0 THEN SET final_status = 'PENDING';
+                ELSE SET final_status = 'CONFIRMED';
+                END IF;
+
+                INSERT INTO CHBS_BOOKINGINFO (BOOKINGID, HALLID, BOOKEDBY, ONBEHALFOF, STARTSLOT, ENDSLOT, BOOKINGDATE, BOOKINGSTATUS)
+                VALUES (n_uuid, p_HID, p_By, p_Behalf, p_Start, p_End, p_MeetDate, final_status);
+                INSERT INTO CHBS_MEETINFO (BOOKINGID, MEETTITLE, MEETTYPE, LINKREQUIRED)
+                VALUES (n_uuid, p_Ttl, p_Typ, p_Lnk);
+                COMMIT;
+                SELECT n_uuid AS BookingID, final_status AS Status;
+            END;
+        END IF;
     END IF;
 END //
 
@@ -339,13 +352,23 @@ DELIMITER ;
 DELIMITER //
 CREATE PROCEDURE CHSP_CHK_AVAIL(IN p_HallID INT, IN p_Date DATE, IN p_Start INT, IN p_End INT)
 BEGIN
-    SELECT COUNT(*) AS ConflictCount
-    FROM CHBS_BOOKINGINFO
-    WHERE HALLID = p_HallID
-      AND BOOKINGDATE = p_Date
-      AND BOOKINGSTATUS IN ('CONFIRMED', 'PENDING')
-      AND STARTSLOT < p_End
-      AND ENDSLOT > p_Start;
+    -- First: if the hall is under maintenance on this date, treat it as unavailable
+    IF EXISTS (
+        SELECT 1 FROM CHBS_HALLS
+        WHERE HALLID = p_HallID
+          AND ISAVAILABLE = 0
+          AND p_Date BETWEEN DISABLED_FROM AND DISABLED_TO
+    ) THEN
+        SELECT 99 AS ConflictCount; -- signals maintenance block
+    ELSE
+        SELECT COUNT(*) AS ConflictCount
+        FROM CHBS_BOOKINGINFO
+        WHERE HALLID = p_HallID
+          AND BOOKINGDATE = p_Date
+          AND BOOKINGSTATUS IN ('CONFIRMED', 'PENDING')
+          AND STARTSLOT < p_End
+          AND ENDSLOT > p_Start;
+    END IF;
 END //
 
 DELIMITER ;
@@ -353,8 +376,21 @@ DELIMITER ;
 DELIMITER //
 CREATE PROCEDURE CHSP_GET_HALB(IN p_MDate DATE)
 BEGIN
-    SELECT HALLID,HALLNAME,BUILDNAME,ISDIRECTORHALL FROM CHBS_HALLS
-    WHERE ISAVAILABLE=1 OR NOT (DISABLED_FROM < p_MDate OR DISABLED_TO > p_MDate);
+    SELECT HALLID, HALLNAME, BUILDNAME, HALLCODE, ISDIRECTORHALL
+    FROM CHBS_HALLS
+    WHERE
+        -- Case 1: Hall is normally available with no maintenance window
+        (ISAVAILABLE = 1 AND DISABLED_FROM IS NULL)
+
+        OR
+
+        -- Case 2: Hall has a maintenance window scheduled (ISAVAILABLE set to 0 by admin),
+        -- but the queried date falls OUTSIDE that window (before or after it).
+        -- e.g. disabled 12-18 Mar; querying Mar 10 or Mar 20 should still show the hall.
+        (DISABLED_FROM IS NOT NULL AND DISABLED_TO IS NOT NULL
+         AND p_MDate NOT BETWEEN DISABLED_FROM AND DISABLED_TO)
+
+    ORDER BY BUILDNAME, HALLNAME;
 END //
 
 DELIMITER ;

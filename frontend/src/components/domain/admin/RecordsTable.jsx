@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { adminService } from '../../../services/adminService';
+import { cancelBooking } from '../../../services/bookingService';
 
 const RecordsTable = ({ view, data, onRefresh }) => {
   const [actionLoading, setActionLoading] = useState(null);
@@ -17,6 +18,7 @@ const RecordsTable = ({ view, data, onRefresh }) => {
 
   const isHallView = view === 'VIEW_HALLS';
   const isPendingView = view === 'PENDING';
+  const isHistoryView = view === 'MY_HISTORY';
 
   const handleDecide = async (bookingId, status) => {
     setActionLoading(bookingId);
@@ -25,6 +27,21 @@ const RecordsTable = ({ view, data, onRefresh }) => {
       if (onRefresh) onRefresh();
     } catch (err) {
       alert(`Action failed: ${err.message}`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCancelBooking = async (bookingId) => {
+    const confirmDelete = window.confirm("Are you sure you want to cancel this booking?");
+    if (!confirmDelete) return;
+
+    setActionLoading(bookingId);
+    try {
+      await cancelBooking({ bookingId });
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      alert(`Cancel failed: ${err.message}`);
     } finally {
       setActionLoading(null);
     }
@@ -136,6 +153,19 @@ const RecordsTable = ({ view, data, onRefresh }) => {
                       >
                         <CrossIcon />
                       </button>
+                    </div>
+                  ) : isHistoryView && ['PENDING', 'CONFIRMED'].includes(item.BOOKINGSTATUS) ? (
+                    <div className="flex flex-row items-center justify-center gap-2">
+                       <StatusBadge type={item.BOOKINGSTATUS} />
+                       {item.MeetDate && new Date(item.MeetDate) > new Date(new Date().toDateString()) && (
+                         <button
+                           onClick={() => handleCancelBooking(item.BOOKINGID)}
+                           disabled={actionLoading === item.BOOKINGID}
+                           className="bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white px-2 py-1 rounded text-[10px] font-bold transition-colors shadow-sm"
+                         >
+                           {actionLoading === item.BOOKINGID ? 'Canceling...' : 'Cancel'}
+                         </button>
+                       )}
                     </div>
                   ) : (
                     <StatusBadge type={item.BOOKINGSTATUS} />

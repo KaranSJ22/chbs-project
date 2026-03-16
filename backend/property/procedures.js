@@ -4,13 +4,13 @@ module.exports = {
     PA_LOGIN: 'CHSP_PA_LOG',     // PA login
     GET_ALL_USERS: 'CHSP_USR_ALL',    // All active employees (for PA on-behalf dropdown)
 
-    // 2 HALL MANAGEMENT (Admin)
+    // 2 HALL MANAGEMENT(Admin)
     ADMIN_ADD_HALL: 'CHSP_HAL_AMAD',  // Add new hall
     ADMIN_EDIT_HALL: 'CHSP_HAL_EDT',   // Edit existing hall
     ADMIN_DISABLE_HALL: 'CHSP_HAL_DIS',   // Disable hall with date range
     ADMIN_ENABLE_HALL: 'CHSP_HAL_ANB',    // Enable hall immediately
 
-    // 3 MEETING TYPE MANAGEMENT (Admin)
+    // 3 MEETING TYPE MANAGEMENT(admin) 
     ADMIN_ADD_TYPE: 'CHSP_MTYP_ADD',  // Add meeting type
     ADMIN_EDIT_TYPE: 'CHSP_MTYP_EDT',  // Edit meeting type
 

@@ -12,7 +12,6 @@ export const fetchAvailableHalls = async (date) => {
     const url = `${ENDPOINTS.HALLS}/available?date=${encodeURIComponent(date)}`;
     const response = await fetch(url, { credentials: 'include' });
     if (!response.ok) throw new Error('Failed to load available halls');
-    // console.log(response.json());
     return response.json();
 };
 
@@ -36,9 +35,20 @@ export const updateHallStatus = async (statusData) => {
         credentials: 'include',
         body: JSON.stringify(statusData),
     });
+    return response.json();
+};
+
+// Enable a hall manually
+export const enableHall = async (hallId) => {
+    const response = await fetch(`${ENDPOINTS.HALLS}/enable`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ hallId }),
+    });
     if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error || err.message || 'Failed to update hall status');
+        throw new Error(err.error || err.message || 'Failed to enable hall');
     }
     return response.json();
 };

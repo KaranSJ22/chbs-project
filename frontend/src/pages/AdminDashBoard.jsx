@@ -8,6 +8,8 @@ import { adminService } from '../services/adminService';
 import { getUserDashboard } from '../services/bookingService';
 import RecordsTable from '../components/domain/admin/RecordsTable';
 import NavBar from '../components/common/NavBar';
+import UserProfileCard from '../components/common/UserProfileCard';
+import AdminSidebarNav from '../components/domain/admin/AdminSidebarNav';
 
 // All possible views in a flat list
 const VIEWS = [
@@ -31,7 +33,6 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (!isRecordsView) return;
-
     setLoading(true);
     const fetchData = async () => {
       try {
@@ -48,7 +49,7 @@ const AdminDashboard = () => {
       }
     };
     fetchData();
-  }, [activeView]);
+  }, [activeView, isRecordsView]);
 
   return (
     <div className="min-h-screen bg-[#F3F4F6] flex flex-col font-sans text-[#333333]">
@@ -57,55 +58,12 @@ const AdminDashboard = () => {
       <div className="flex flex-col lg:flex-row flex-1 p-4 lg:p-6 gap-6 overflow-hidden">
         {/* Sidebar */}
         <aside className="w-full lg:w-64 flex flex-col gap-6 flex-shrink-0">
-          {/* User card */}
-          <div className="group relative w-full overflow-hidden rounded-2xl bg-white shadow-md">
-            {/* Gradient header with orange accent */}
-            <div className="relative h-20 bg-gradient-to-r from-[#0b3d91] to-[#1a5bb8]">
-              <div className="absolute bottom-0 h-1 w-full bg-orange-500" />
-            </div>
-            {/* Avatar — overlaps header */}
-            <div className="relative z-10 -mt-10 flex justify-center">
-              <img
-                src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y&s=256"
-                alt="Profile"
-                className="h-20 w-20 rounded-full border-4 border-white object-cover shadow-lg transition-transform duration-500 ease-out group-hover:scale-110"
-              />
-            </div>
-            {/* Info */}
-            <div className="px-4 py-3 pb-5 text-center">
-              <h2 className="mb-0.5 text-base font-bold text-slate-800">
-                {user?.name || user?.empCode || 'Admin'}
-              </h2>
-              <p className="mb-3 text-xs font-bold tracking-wide text-orange-600">
-                EMP ID: {user?.empCode || '—'}
-              </p>
-              <div className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-1.5">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
-                <span className="text-[10px] font-bold tracking-widest uppercase text-[#0b3d91]">Admin</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Flat nav */}
-          <nav className="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm flex flex-col gap-1">
-            <h2 className="text-[10px] font-bold uppercase text-gray-400 px-3 mb-2 border-b pb-1">
-              Actions &amp; Records
-            </h2>
-            {VIEWS.map(v => (
-              <MenuBtn
-                key={v.key}
-                label={v.label}
-                active={activeView === v.key}
-                isRecords={v.type === 'records'}
-                onClick={() => setActiveView(v.key)}
-              />
-            ))}
-          </nav>
+          <UserProfileCard user={user} empCode={user?.empCode} role="Admin" />
+          <AdminSidebarNav views={VIEWS} activeView={activeView} onSelect={setActiveView} />
         </aside>
 
-        {/* Single main content area */}
+        {/* Main content */}
         <main className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm p-8 min-h-[550px] flex flex-col">
-
           {/* Forms */}
           {!isRecordsView && (
             <div className="w-full max-w-md mx-auto flex-1 flex flex-col justify-center">
@@ -146,21 +104,5 @@ const AdminDashboard = () => {
     </div>
   );
 };
-
-const MenuBtn = ({ label, active, isRecords, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`w-full text-left px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2
-      ${active
-        ? 'bg-[#FF6600] text-white shadow-md'
-        : isRecords
-          ? 'text-gray-600 hover:bg-blue-50 hover:text-[#003366]'
-          : 'text-gray-600 hover:bg-gray-50'
-      }`}
-  >
-    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${active ? 'bg-white' : isRecords ? 'bg-[#007BFF]' : 'bg-[#FF6600]'}`} />
-    {label}
-  </button>
-);
 
 export default AdminDashboard;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchAllHalls, updateHallStatus } from '../../services/hallService';
+import { fetchAllHalls, updateHallStatus, enableHall } from '../../services/hallService';
 
 const isHallActive = (hall) => {
     const v = hall.ISAVAILABLE;
@@ -43,6 +43,22 @@ const DisableHallForm = ({ onSuccess }) => {
             if (onSuccess) onSuccess();
         } catch (err) {
             setStatus({ type: 'error', text: err.message || 'Failed to disable hall.' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleEnable = async () => {
+        setLoading(true);
+        setStatus(null);
+        try {
+            await enableHall(selectedHall);
+            setStatus({ type: 'success', text: 'Hall re-enabled successfully.' });
+            setSelectedHall('');
+            loadHalls();
+            if (onSuccess) onSuccess();
+        } catch (err) {
+            setStatus({ type: 'error', text: err.message || 'Failed to enable hall.' });
         } finally {
             setLoading(false);
         }
@@ -93,16 +109,26 @@ const DisableHallForm = ({ onSuccess }) => {
                     <div>
                         {!active ? (
                             /* Hall is already under maintenance */
-                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm">
-                                <p className="font-bold text-amber-800">⏳ Hall is currently under maintenance</p>
-                                {currentHall.DISABLED_FROM && (
-                                    <p className="text-amber-700 text-xs mt-1">
-                                        Period: {new Date(currentHall.DISABLED_FROM).toLocaleDateString('en-GB')} → {new Date(currentHall.DISABLED_TO).toLocaleDateString('en-GB')}
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm flex flex-col gap-3">
+                                <div>
+                                    <p className="font-bold text-amber-800">⏳ Hall is currently under maintenance</p>
+                                    {currentHall.DISABLED_FROM && (
+                                        <p className="text-amber-700 text-xs mt-1">
+                                            Period: {new Date(currentHall.DISABLED_FROM).toLocaleDateString('en-GB')} → {new Date(currentHall.DISABLED_TO).toLocaleDateString('en-GB')}
+                                        </p>
+                                    )}
+                                    <p className="text-amber-600 text-xs mt-1">
+                                        The system will automatically re-enable this hall after the maintenance window ends.
                                     </p>
-                                )}
-                                <p className="text-amber-600 text-xs mt-2">
-                                    The system will automatically re-enable this hall after the maintenance window ends.
-                                </p>
+                                </div>
+                                
+                                <button
+                                    disabled={loading}
+                                    onClick={handleEnable}
+                                    className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold text-xs shadow-md shadow-blue-100 hover:bg-blue-700 transition disabled:bg-gray-200 disabled:shadow-none mt-2"
+                                >
+                                    {loading ? 'Processing...' : 'ENABLE HALL NOW'}
+                                </button>
                             </div>
                         ) : (
                             /* Hall is active — show disable form */
