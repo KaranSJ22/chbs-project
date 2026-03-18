@@ -75,8 +75,7 @@ const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 
-// 1. Import the DB pool initializer instead of the old Sequelize db object
-const { initDbPool } = require("./models"); 
+const { initDbPool } = require("./models");
 const apiRoutes = require("./routes");
 
 const app = express();
@@ -126,7 +125,6 @@ app.get("/", (req, res) => {
 app.use("/api", apiRoutes);
 
 // --- DATABASE INIT & SERVER START ---
-// 2. Initialize the ODBC pool FIRST, then start listening for traffic
 initDbPool()
   .then(() => {
     app.listen(PORT, '0.0.0.0', () => {
