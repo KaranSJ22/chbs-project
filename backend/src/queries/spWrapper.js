@@ -53,7 +53,7 @@
 
 // module.exports = { callSP };
 
-const { getPool } = require('../models/index'); // Grab the pool getter
+const { getPool } = require('../models/index');
 
 const callSP = async (procName, params = {}) => {
     let connection;
@@ -79,7 +79,7 @@ const callSP = async (procName, params = {}) => {
         console.error(`Error executing SP: ${procName}`, error);
         throw error;
     } finally {
-        // 4. Return the connection back to the pool!
+        // 4. Return the connection back to the pool
         if (connection) {
             await connection.close();
         }
